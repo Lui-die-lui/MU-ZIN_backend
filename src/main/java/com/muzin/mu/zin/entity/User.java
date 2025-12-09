@@ -48,10 +48,12 @@ public class User {
     private String profileImgUrl;
 
     // 이메일 인증 완료 여부
+    @Builder.Default
     @Column(name = "email_verified", nullable = false)
     private Boolean emailVerified = false;
 
     // 아티스트 전환 상태 Enum
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "artist_status", nullable = false, length = 20)
     private ArtistStatus artistStatus = ArtistStatus.NONE;

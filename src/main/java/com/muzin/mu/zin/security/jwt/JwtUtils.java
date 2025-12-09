@@ -29,10 +29,10 @@ public class JwtUtils {
     }
 
 
-    public String generateAccessToken(String id) {
+    public String generateAccessToken(String email) {
         return Jwts.builder()
-                .subject("AccessToken") // AccessToken 타입
-                .id(id) // 나중에 userId를 넣어서 claims.getId()
+                .subject(email) // AccessToken 타입
+//                .id(userId.toString()) // 나중에 userId를 넣어서 claims.getId()
                 .expiration(new Date(new Date().getTime() + (1000L * 60L * 60L * 24L * 30L)))
                 .signWith(KEY) // 서명 생성
                 .compact(); // 문자 직렬화

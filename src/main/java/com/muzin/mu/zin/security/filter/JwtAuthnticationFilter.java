@@ -75,8 +75,10 @@ public class JwtAuthnticationFilter extends OncePerRequestFilter { // 요청마�
             // JJWT 라이브러리 같은 걸로 서명 검증 + 만료 검사 + payload 파싱해서 Claims 객체 가져옴
             Claims claims = jwtUtils.getClaims(accessToken);
 
-            String id = claims.getId();
-            Integer userId = Integer.parseInt(id);
+            // 이거 email로 바꿈
+//            String id = claims.getId();
+            String email = claims.getSubject();
+            Integer userId = Integer.parseInt(email);
 
             // DB에서 유저 한 명 조회(없으면 Optional.empty())
             Optional<User> optionalUser = userRepository.findById(userId);
