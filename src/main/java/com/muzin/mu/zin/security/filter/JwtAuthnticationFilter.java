@@ -14,12 +14,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Optional;
 
 
@@ -75,18 +78,34 @@ public class JwtAuthnticationFilter extends OncePerRequestFilter { // 요청마�
             // JJWT 라이브러리 같은 걸로 서명 검증 + 만료 검사 + payload 파싱해서 Claims 객체 가져옴
             Claims claims = jwtUtils.getClaims(accessToken);
 
-            // 이거 email로 바꿈
-//            String id = claims.getId();
-            String email = claims.getSubject();
-            Integer userId = Integer.parseInt(email);
+            String subject = claims.getSubject();
+
+            log.debug("JWT subject = {}", subject);
+            if (subject == null) {
+                throw new AuthenticationServiceException("인증 실패 : 토큰에 userId가 없습니다.");
+            }
+
+            // 해당 로직때문에 계속 잘못 해석되고 있었음
+            Integer userId = Integer.parseInt(subject);
 
             // DB에서 유저 한 명 조회(없으면 Optional.empty())
-            Optional<User> optionalUser = userRepository.findById(userId);
+            Optional<User> optionalUser = userRepository.findWithRolesByUserId(userId);
 
             // ifPresentOrElse 두 개의 인수가 필요함
             // 유저가 존재하면 -> 람다 첫 번째 블록 실행
             // 없으면 -> 두번째 블록(예외 던지는 부분) 실행
             optionalUser.ifPresentOrElse(user -> {
+
+                // 여기서 한 번 DB에서 roles 꺼내서 권한 리스트로 변환
+                List<SimpleGrantedAuthority> authorities = user.getUserRoles().stream()
+                        .map(userRole -> new SimpleGrantedAuthority(userRole.getRole().getRoleName()))
+                        .toList();
+
+                // role만 보여줌
+                List<String> roles = authorities.stream()
+                        .map(GrantedAuthority::getAuthority)
+                        .toList();
+
                 // DB에서 가져온 User 엔티티를 Spring Security에서
                 // 쓰기 좋은 UserDetails 타입인 PrincipalUser로 변환
                 PrincipalUser principalUser = PrincipalUser.builder()
@@ -97,7 +116,7 @@ public class JwtAuthnticationFilter extends OncePerRequestFilter { // 요청마�
                         .profileImgUrl(user.getProfileImgUrl())
                         .emailVerified(user.getEmailVerified())
                         .artistStatus(user.getArtistStatus())
-                        .userRoles(user.getUserRoles())
+                        .roles(roles)
                         .build();
 
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(

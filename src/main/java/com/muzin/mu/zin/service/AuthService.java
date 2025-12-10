@@ -69,7 +69,7 @@ public class AuthService {
             return new ApiRespDto<>("failed", "이메일 또는 비밀번호가 올바르지 않습니다.",null);
         }
 
-        String accessToken = jwtUtils.generateAccessToken(user.getEmail());
+        String accessToken = jwtUtils.generateAccessToken(user.getUserId());
         return new ApiRespDto<>("success", "로그인에 성공했습니다.", accessToken);
     }
 }

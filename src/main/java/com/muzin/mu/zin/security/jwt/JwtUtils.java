@@ -28,16 +28,17 @@ public class JwtUtils {
         KEY = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret)); //BASE64 인코딩 문자열을 바이트 배열로 변환(디코딩)
     }
 
-
-    public String generateAccessToken(String email) {
+    // userId 기반 AccessToken
+    public String generateAccessToken(Integer userId) {
         return Jwts.builder()
-                .subject(email) // AccessToken 타입
-//                .id(userId.toString()) // 나중에 userId를 넣어서 claims.getId()
+                .subject(userId.toString()) // sub = userId
+//                .claim("email", email) // 나중에 userId를 넣어서 claims.getId()
                 .expiration(new Date(new Date().getTime() + (1000L * 60L * 60L * 24L * 30L)))
                 .signWith(KEY) // 서명 생성
                 .compact(); // 문자 직렬화
     }
 
+    // 이거는 그대로 (이메일 인증용)
     public String generateVerifyToken(String id) {
         return Jwts.builder()
                 .subject("VerifyToken") // SMTP 인증용 토큰
