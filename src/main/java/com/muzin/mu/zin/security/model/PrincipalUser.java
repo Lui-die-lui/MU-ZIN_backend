@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 @Builder
 public class PrincipalUser implements UserDetails {
 
-    private Integer userId;
+    private Long userId;
     private String email;
     private String username; // 로그인 아이디
     @JsonIgnore

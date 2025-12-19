@@ -33,6 +33,7 @@ public class AuthService {
         if(user.isPresent()) {
             return new ApiRespDto<>("failed", "이미 사용중인 이메일입니다.", null);
         }
+
         User newUser = User
                 .builder()
                 .email(request.email())

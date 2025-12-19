@@ -85,7 +85,8 @@ public class JwtAuthnticationFilter extends OncePerRequestFilter { // 요청마�
             }
 
             // 해당 로직때문에 계속 잘못 해석되고 있었음
-            Integer userId = Integer.parseInt(subject);
+            // subject를 문자열로 저장했을 시 변환이 한번 필요함
+            Long userId = Long.parseLong(subject);
 
             // DB에서 유저 한 명 조회(없으면 Optional.empty())
             Optional<User> optionalUser = userRepository.findWithRolesByUserId(userId);

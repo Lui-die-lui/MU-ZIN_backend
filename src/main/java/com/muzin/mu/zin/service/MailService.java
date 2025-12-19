@@ -81,7 +81,7 @@ public class MailService {
             }
 
             // userId 꺼내기
-            Integer userId = Integer.parseInt(claims.getId());
+            Long userId = Long.parseLong(claims.getId());
 
             // 유저 조회
             User user = userRepository.findByUserId(userId)

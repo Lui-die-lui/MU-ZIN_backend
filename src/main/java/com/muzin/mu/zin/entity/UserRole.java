@@ -19,7 +19,7 @@ public class UserRole {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "user_role_id")
-    private Integer userRoleId;
+    private Long userRoleId;
 
     // 매핑된 유저(FK user_role_id)
     @ManyToOne(fetch = FetchType.LAZY)

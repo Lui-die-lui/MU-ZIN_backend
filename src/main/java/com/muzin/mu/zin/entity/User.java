@@ -28,7 +28,7 @@ public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY) // 자동 증가
     @Column(name = "user_id")
-    private Integer userId;
+    private Long userId;
 
     // 이메일 - username 과 동일(UK)
     @Column(nullable = false, length = 100)
@@ -76,5 +76,17 @@ public class User {
         userRoles.add(userRole);
         userRole.setUser(this);
     }
+
+    // User에만 편의메서드 두고
+//    public UserRole addRole(Role role) {
+//        UserRole userRole = UserRole.builder()
+//                .user(this)
+//                .role(role)
+//                .build();
+//
+//        userRoles.add(userRole);
+//        role.getUserRoles().add(userRole);
+//        return userRole;
+//    }
 
 }

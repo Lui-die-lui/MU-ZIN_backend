@@ -26,7 +26,7 @@ public class Role {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY) // 자동 증가
     @Column(name = "role_id")
-    private Integer roleId;
+    private Long roleId;
 
     // "ROLE_USER", "ROLE_ARTIST", "ROLE_ADMIN" ... (UK)
     @Column(name = "role_name", nullable = false, length = 50)
@@ -36,13 +36,13 @@ public class Role {
     @Column(name = "role_name_kor", nullable = false, length = 50)
     private String roleNameKor;
 
-    @CreationTimestamp
-    @Column(name = "create_dt", updatable = false)
-    private LocalDateTime createDt;
-
-    @UpdateTimestamp
-    @Column(name = "update_dt")
-    private LocalDateTime updateDt;
+//    @CreationTimestamp
+//    @Column(name = "create_dt", updatable = false)
+//    private LocalDateTime createDt;
+//
+//    @UpdateTimestamp
+//    @Column(name = "update_dt")
+//    private LocalDateTime updateDt;
 
     // 해당 Role을 가진 UserRole 목록(역방향 - 왜?)
     @OneToMany(mappedBy = "role", cascade = CascadeType.ALL, orphanRemoval = true)

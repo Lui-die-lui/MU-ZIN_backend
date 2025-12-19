@@ -46,6 +46,10 @@ dependencies {
 	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.13.0'
 	// spring-boot-starter-mail
 	implementation 'org.springframework.boot:spring-boot-starter-mail:4.0.0'
+	// spring-boot-starter-oauth2
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+
 }
 
 tasks.named('test') {

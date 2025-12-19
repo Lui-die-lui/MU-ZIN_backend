@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.util.Optional;
 
-public interface UserRepository extends JpaRepository<User, Integer> {
+public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query("""
         select u
@@ -15,9 +15,9 @@ public interface UserRepository extends JpaRepository<User, Integer> {
         left join fetch ur.role r
         where u.userId = :userId
     """)
-    Optional<User> findWithRolesByUserId(Integer userId);
+    Optional<User> findWithRolesByUserId(Long userId);
 
     Optional<User> findByEmail(String email);
 
-    Optional<User> findByUserId(Integer userId);
+    Optional<User> findByUserId(Long userId);
 }

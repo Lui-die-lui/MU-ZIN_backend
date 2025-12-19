@@ -29,7 +29,7 @@ public class JwtUtils {
     }
 
     // userId 기반 AccessToken
-    public String generateAccessToken(Integer userId) {
+    public String generateAccessToken(Long userId) {
         return Jwts.builder()
                 .subject(userId.toString()) // sub = userId
 //                .claim("email", email) // 나중에 userId를 넣어서 claims.getId()
