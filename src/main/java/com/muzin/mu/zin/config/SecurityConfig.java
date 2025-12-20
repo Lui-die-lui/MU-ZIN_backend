@@ -1,6 +1,9 @@
 package com.muzin.mu.zin.config;
 
 import com.muzin.mu.zin.security.filter.JwtAuthnticationFilter;
+import com.muzin.mu.zin.security.handler.OAuth2FailureHandler;
+import com.muzin.mu.zin.security.handler.OAuth2SuccessHandler;
+import com.muzin.mu.zin.service.OAuth2PrincipalUserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,6 +24,9 @@ public class SecurityConfig {
 
     // 의존성 안정적으로 유지
     private final JwtAuthnticationFilter jwtAuthnticationFilter;
+//    private final OAuth2PrincipalUserService oAuth2PrincipalUserService;
+//    private final OAuth2FailureHandler oAuth2FailureHandler;
+//    private final OAuth2SuccessHandler oAuth2SuccessHandler;
 
     // 스프링 컨테이너에 해당 타입 빈을 등록
     @Bean
@@ -34,7 +40,7 @@ public class SecurityConfig {
     //        return new BCryptPasswordEncoder();
     //    }
 
-    // 생성자 주입
+//    // 생성자 주입
     public SecurityConfig(JwtAuthnticationFilter jwtAuthnticationFilter) {
         this.jwtAuthnticationFilter = jwtAuthnticationFilter;
     }
@@ -62,7 +68,10 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                                   OAuth2PrincipalUserService oAuth2PrincipalUserService,
+                                                   OAuth2SuccessHandler oAuth2SuccessHandler,
+                                                   OAuth2FailureHandler oAuth2FailureHandler) throws Exception { // 순환참조 오류나서 이쪽으로...
         // 세션/폼 로그인 안쓰고 JWT + REST API로만 갈거라면 OK
         http.cors(Customizer.withDefaults());
         http.csrf(csrf -> csrf.disable());
@@ -80,7 +89,11 @@ public class SecurityConfig {
             auth.anyRequest().authenticated();
         });
 
-        // 여기 나중에 OAuth2 로직 들어감
+        http.oauth2Login(oauth2 -> oauth2
+                .userInfoEndpoint(userInfo -> userInfo.userService(oAuth2PrincipalUserService))
+                .successHandler(oAuth2SuccessHandler)
+                .failureHandler(oAuth2FailureHandler)
+        );
 
         return http.build();
     }
