@@ -72,8 +72,28 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         }
 
         // Merge 미지원 MVP - 기존 이메일 계정 있으면 가입 불가 (고려해볼것 동일한 이메일 가입 안되는거 서비스 상으로 좀 그럼)
-        if (userRepository.findByEmail(email).isPresent()) {
-            redirectError(request, response, "MERGE_REQUIRED");
+        Optional<User> existing = userRepository.findByEmail(email);
+        if (existing.isPresent()) {
+
+//            redirectError(request, response, "MERGE_REQUIRED");
+            User user = existing.get();
+
+            if (oAuth2UserRepository.existsByUserAndProvider(user, provider)) {
+                // 이미 같은 provider로 연동되어 있으면 중복 저장하지 말고 로그인만
+                redirectWithToken(request, response, user);
+                return;
+            }
+
+            oAuth2UserRepository.save(
+                    OAuth2UserEntity.builder()
+                            .user(user)
+                            .provider(provider)
+                            .providerUserId(providerUserId)
+                            .build()
+            );
+
+
+            redirectWithToken(request, response, user);
             return;
         }
 
