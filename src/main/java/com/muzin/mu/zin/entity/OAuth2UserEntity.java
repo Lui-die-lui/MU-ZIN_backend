@@ -1,5 +1,6 @@
 package com.muzin.mu.zin.entity;
 
+import com.muzin.mu.zin.entity.common.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -21,7 +22,7 @@ import java.time.LocalDateTime;
                 @UniqueConstraint(name = "uk_oauth2_user_provider", columnNames = {"user_id","provider"})
         }
 )
-public class OAuth2UserEntity {
+public class OAuth2UserEntity extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -37,11 +38,4 @@ public class OAuth2UserEntity {
     @Column(name = "provider_user_id", nullable = false, length = 255)
     private String providerUserId;
 
-    @CreationTimestamp
-    @Column(name = "create_dt", updatable = false)
-    private LocalDateTime createDt;
-
-    @UpdateTimestamp
-    @Column(name = "update_dt")
-    private LocalDateTime updateDt;
 }

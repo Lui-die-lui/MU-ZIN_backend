@@ -1,5 +1,6 @@
 package com.muzin.mu.zin.entity;
 
+import com.muzin.mu.zin.entity.common.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -14,7 +15,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UserRole {
+public class UserRole extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -31,11 +32,4 @@ public class UserRole {
     @JoinColumn(name = "role_id", nullable = false)
     private Role role;
 
-    @CreationTimestamp
-    @Column(name = "create_dt", updatable = false)
-    private LocalDateTime createDt;
-
-    @UpdateTimestamp
-    @Column(name = "update_dt")
-    private LocalDateTime updateDt;
 }

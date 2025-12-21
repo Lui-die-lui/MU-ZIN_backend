@@ -1,6 +1,7 @@
 package com.muzin.mu.zin.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.muzin.mu.zin.entity.common.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -23,7 +24,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class User {
+public class User extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY) // 자동 증가
@@ -58,13 +59,6 @@ public class User {
     @Column(name = "artist_status", nullable = false, length = 20)
     private ArtistStatus artistStatus = ArtistStatus.NONE;
 
-    @CreationTimestamp
-    @Column(name = "create_dt", updatable = false)
-    private LocalDateTime createDt;
-
-    @UpdateTimestamp
-    @Column(name = "update_dt")
-    private LocalDateTime updateDt;
 
     // 해당 유저의 UserRole 리스트
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
