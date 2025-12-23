@@ -22,7 +22,7 @@ public class ArtistProfile extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "artist_profile_id", nullable = false)
-    private Long artist_profile_id;
+    private Long artistProfileId;
 
     // 유저당 아티스트 프로필 1개
     @OneToOne(fetch = FetchType.LAZY, optional = false)
