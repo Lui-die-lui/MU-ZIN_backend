@@ -40,7 +40,7 @@ public class ArtistProfile extends BaseTimeEntity {
     @Column(name = "major_name", nullable = false, length = 50)
     private String majorName;
 
-    @Column(name = "submitted_dt", nullable = false)
+    @Column(name = "submitted_dt")
     private LocalDateTime submittedDt;
 
     @Column(name = "reviewed_dt")
