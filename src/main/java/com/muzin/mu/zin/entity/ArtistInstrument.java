@@ -3,6 +3,7 @@ package com.muzin.mu.zin.entity;
 // 아티스트 - 악기 매핑 테이블
 
 import com.muzin.mu.zin.entity.common.BaseTimeEntity;
+import com.muzin.mu.zin.entity.instrument.Instrument;
 import jakarta.persistence.*;
 import lombok.*;
 
