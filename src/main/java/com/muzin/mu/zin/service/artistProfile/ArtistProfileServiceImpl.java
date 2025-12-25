@@ -3,31 +3,47 @@ package com.muzin.mu.zin.service.artistProfile;
 import com.muzin.mu.zin.dto.ApiRespDto;
 import com.muzin.mu.zin.dto.artist.ArtistProfileResponse;
 import com.muzin.mu.zin.dto.artist.ArtistProfileUpsertRequest;
+import com.muzin.mu.zin.dto.instrument.InstrumentResponse;
+import com.muzin.mu.zin.entity.ArtistInstrument;
 import com.muzin.mu.zin.entity.ArtistProfile;
 import com.muzin.mu.zin.entity.ArtistStatus;
 import com.muzin.mu.zin.entity.User;
+import com.muzin.mu.zin.entity.instrument.Instrument;
+import com.muzin.mu.zin.repository.ArtistInstrumentRepository;
 import com.muzin.mu.zin.repository.ArtistProfileRepository;
+import com.muzin.mu.zin.repository.InstrumentRepository;
 import com.muzin.mu.zin.repository.UserRepository;
 import com.muzin.mu.zin.security.model.PrincipalUser;
+import com.muzin.mu.zin.service.InstrumentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.EnumSet;
+import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class ArtistApplicationServiceImpl implements ArtistProfileService{
+public class ArtistProfileServiceImpl implements ArtistProfileService{
 
     private final UserRepository userRepository;
     private final ArtistProfileRepository artistProfileRepository;
+    private final ArtistInstrumentRepository artistInstrumentRepository;
+    private final InstrumentService instrumentService;
 
 
     @Override
     public ApiRespDto<ArtistProfileResponse> getMyArtistProfile(PrincipalUser principalUser) {
         ArtistProfile profile = getProfileOrThrow(principalUser.getUserId());
-        return new ApiRespDto<>("success", "", toResponse(profile));
+        return new ApiRespDto<>("success", "조회 완료", toResponse(profile));
+//        User user = getUserOrThrow(principalUser.getUserId());
+//
+//        ArtistProfile profile = artistProfileRepository.findByUser_UserId(user.getUserId())
+//                .orElseThrow(() -> new IllegalStateException("아티스트 프로필이 없습니다."));
+//
+//        return new ApiRespDto<>("success","조회 완료",toResponse(profile));
     }
 
     /*
@@ -42,14 +58,20 @@ public class ArtistApplicationServiceImpl implements ArtistProfileService{
        User user = getUserOrThrow(principalUser.getUserId());
        requireStatus(user, EnumSet.of(ArtistStatus.NONE));
 
+
        ArtistProfile profile = artistProfileRepository.findByUser_UserId(user.getUserId())
                .orElseGet(() -> ArtistProfile.builder()
                        .user(user)
+                       .bio(req.bio())
+                       .career(req.career())
+                       .majorName(req.majorName())
                        .build());
 
+       // 이미 있으면 update
        profile.updateProfile(req.bio(), req.career(), req.majorName());
        ArtistProfile saved = artistProfileRepository.save(profile);
 
+       // 악기 포함 응답(없으면 빈 리스트)
        return new ApiRespDto<>("success", "임시 저장 완료", toResponse(saved));
     }
 
@@ -90,6 +112,59 @@ public class ArtistApplicationServiceImpl implements ArtistProfileService{
         return new ApiRespDto<>("success", "프로필 수정 완료", toResponse(saved));
     }
 
+    // 악기 목록 교체 (NONE || APPROVED)
+    @Transactional
+    public ApiRespDto<ArtistProfileResponse> setMyInstruments(List<Long> instrumentIds, PrincipalUser principalUser) {
+        User user = getUserOrThrow(principalUser.getUserId());
+
+        // PENDING 상태에서는 변경 불가
+//        if (user.getArtistStatus() == ArtistStatus.PENDING) {
+//            return new ApiRespDto<>("failed", "심사 중에는 악기 수정이 불가능합니다.",null);
+//        }
+//
+//        // 제출 전이나 심사 완료 후에는 변경 가능
+//        if (user.getArtistStatus() != ArtistStatus.NONE && user.getArtistStatus() != ArtistStatus.APPROVED) {
+//            return new ApiRespDto<>("failed","현재 상태에서는 악기 수정이 불가능 합니다.", null);
+//        }
+        requireStatus(user, EnumSet.of(ArtistStatus.NONE, ArtistStatus.APPROVED));
+
+        ArtistProfile profile = artistProfileRepository.findByUser_UserId(user.getUserId())
+                .orElseThrow(() -> new IllegalStateException("아티스트 프로필이 없습니다."));
+
+        // 중복 제거
+        List<Long> uniqueIds = (instrumentIds == null) ? List.of() : instrumentIds.stream().distinct().toList();
+
+        // 승인된 악기만 통과 + 없는 id 검증까지
+        List<Instrument> instruments = instrumentService.validateAndGetApprovedByIds(uniqueIds);
+
+        // 기존 매핑 전체 삭제 - 새로 갈아끼움
+//        artistInstrumentRepository.deleteByArtistProfile_ArtistProfileId(profile.getArtistProfileId());
+//        artistInstrumentRepository.flush(); // 바로 반영
+        artistInstrumentRepository.deleteAllByProfileId(profile.getArtistProfileId());
+//
+//        // 최종 리스트로 재저장
+//        List<ArtistInstrument> mappings = instruments.stream()
+//                .map(inst -> new ArtistInstrument(profile, inst))
+//                .toList();
+//        artistInstrumentRepository.saveAll(mappings);
+//
+//        return new ApiRespDto<>("success", "악기 목록이 저장되었습니다.", toResponse(profile));
+        // 세션 없다고 터짐
+        List<InstrumentResponse> instrumentResponses = instruments.stream()
+                .map(i -> new InstrumentResponse(i.getInstId(), i.getInstName()))
+                .toList();
+
+        ArtistProfileResponse resp = new ArtistProfileResponse(
+                profile.getArtistProfileId(),
+                profile.getUser().getUserId(),
+                profile.getBio(),
+                profile.getCareer(),
+                profile.getMajorName(),
+                instrumentResponses
+        );
+
+        return new ApiRespDto<>("success", "악기 목록이 저장되었습니다.", resp);
+    }
 
     // guard & helpers
 
@@ -125,14 +200,21 @@ public class ArtistApplicationServiceImpl implements ArtistProfileService{
     }
 
     private ArtistProfileResponse toResponse(ArtistProfile profile) {
+        List<InstrumentResponse> instruments = profile.getArtistInstruments().stream()
+                .map(ai -> new InstrumentResponse(
+                        ai.getInstrument().getInstId(),
+                        ai.getInstrument().getInstName()
+                ))
+                .toList();
+
         return new ArtistProfileResponse(
                 profile.getArtistProfileId(),
                 profile.getUser().getUserId(),
                 profile.getBio(),
                 profile.getCareer(),
                 profile.getMajorName(),
-                java.util.List.of() // instruments는 다음 단계에서 매핑
-                // 악기 목록을 아직 구현 안 해서 지금은 비워서 내려줌 - 불변 빈 리스트 생성
+                instruments
+
         );
     }
 

@@ -1,10 +1,13 @@
 package com.muzin.mu.zin.entity;
 
 import com.muzin.mu.zin.entity.common.BaseTimeEntity;
+import com.muzin.mu.zin.entity.instrument.Instrument;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED) // 의미 없는 무분별한 기본 생성자 생성을 막음
@@ -53,11 +56,25 @@ public class ArtistProfile extends BaseTimeEntity {
     @Column(name = "rejected_reason")
     private String rejectedReason;
 
+    // 아티스트가 추가한 악기 리스트(악기 테이블 매핑)
+    @Builder.Default
+    @OneToMany(mappedBy = "artistProfile", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ArtistInstrument> artistInstruments = new ArrayList<>();
+
     // 수정을 위한 메서드
     public void updateProfile(String bio, String career, String majorName) {
         this.bio = bio;
         this.career = career;
         this.majorName = majorName;
+    }
+
+    // 악기 매핑 편의 매서드
+    public void addInstrument (Instrument instrument) {
+        this.artistInstruments.add(new ArtistInstrument(this, instrument));
+    }
+
+    public void clearInstruments() {
+        this.artistInstruments.clear(); // orphanRemoval=true 면 DB join row도 삭제됨
     }
 
 

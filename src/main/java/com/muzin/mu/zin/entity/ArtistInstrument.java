@@ -9,14 +9,14 @@ import lombok.*;
 
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor
-@Builder
+//@AllArgsConstructor - 생성은 생성자/팩토리로만 제한하는게 안전
+//@Builder - 조인 엔티티에서는 빌더 제거
 @Entity
 @Table(
         name = "artist_instruments",
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uk_artist_instrument_pair",
+                        name = "uk_artist_profile_instrument",
                         columnNames = {"artist_profile_id", "inst_id"}
                 )
         }
@@ -35,4 +35,9 @@ public class ArtistInstrument extends BaseTimeEntity {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "inst_id", nullable = false)
     private Instrument instrument;
+
+    public ArtistInstrument(ArtistProfile artistProfile, Instrument instrument) {
+        this.artistProfile = artistProfile;
+        this.instrument = instrument;
+    }
 }

@@ -50,7 +50,6 @@ public class Instrument extends BaseTimeEntity {
         @Column(name = "reject_reason")
         private String rejectReason;
 
-        @Lob
         @Column(name = "reviewed_dt")
         private LocalDateTime reviewedDt;
 

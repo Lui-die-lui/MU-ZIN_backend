@@ -28,4 +28,6 @@ public interface InstrumentRepository extends JpaRepository<Instrument, Long> {
 
     // 관리자 검수용
     List<Instrument> findAllByStatusOrderByCreateDtAsc(InstrumentStatus status);
+
+    //
 }
