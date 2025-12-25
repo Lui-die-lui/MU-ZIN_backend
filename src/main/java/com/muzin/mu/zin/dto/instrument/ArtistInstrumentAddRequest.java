@@ -1,4 +1,4 @@
-package com.muzin.mu.zin.dto.artist;
+package com.muzin.mu.zin.dto.instrument;
 
 import java.util.List;
 

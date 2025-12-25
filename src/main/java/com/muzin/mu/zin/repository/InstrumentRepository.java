@@ -1,8 +1,8 @@
 package com.muzin.mu.zin.repository;
 
-import com.muzin.mu.zin.entity.InstrumentStatus;
 import com.muzin.mu.zin.entity.instrument.Instrument;
 import com.muzin.mu.zin.entity.instrument.InstrumentCategory;
+import com.muzin.mu.zin.entity.instrument.InstrumentStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
