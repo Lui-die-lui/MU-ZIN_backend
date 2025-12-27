@@ -1,10 +1,13 @@
 package com.muzin.mu.zin.controller;
 
 import com.muzin.mu.zin.dto.ApiRespDto;
+import com.muzin.mu.zin.dto.lesson.LessonCreateRequest;
+import com.muzin.mu.zin.dto.lesson.LessonUpdateRequest;
 import com.muzin.mu.zin.dto.lesson.SetLessonStylesRequest;
 import com.muzin.mu.zin.security.model.PrincipalUser;
 import com.muzin.mu.zin.service.lesson.LessonService;
 import com.muzin.mu.zin.service.lesson.LessonStyleService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -19,11 +22,27 @@ public class LessonController {
 
     // 아티스트 레슨 생성
     @PostMapping("/me")
-    public ApiRespDto<?> createLesson(@AuthenticationPrincipal PrincipalUser principalUser) {
-        return lessonService.createLesson(principalUser);
+    public ApiRespDto<?> createLesson(
+            @Valid // dto 검증하려면 있어야함(@notnull)
+            @RequestBody LessonCreateRequest req, @AuthenticationPrincipal PrincipalUser principalUser) {
+        return lessonService.createLesson(req, principalUser);
+    }
+
+    // 아티스트 레슨 수정
+    @PatchMapping("/me/{lessonId}")
+    public ApiRespDto<?> updateLesson(
+            @PathVariable Long lessonId,
+            @RequestBody LessonUpdateRequest req,
+            @AuthenticationPrincipal PrincipalUser principalUser
+            ) {
+        return lessonService.updateLesson(lessonId, req, principalUser);
     }
 
     // 아티스트 레슨 조회
+    @GetMapping("/me")
+    public ApiRespDto<?> getArtistLesson(@AuthenticationPrincipal PrincipalUser principalUser) {
+        return lessonService.getArtistLesson(principalUser);
+    }
 
     // 태그 목록 조회 (프론트 칩/필터용)
     @GetMapping("/style-tags")
