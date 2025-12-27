@@ -59,8 +59,8 @@ public class Instrument extends BaseTimeEntity {
                 this.instName = newName;
         }
 
-        public void changeCategory(InstrumentCategory newCartegory) {
-                this.category = newCartegory;
+        public void changeCategory(InstrumentCategory newCategory) {
+                this.category = newCategory;
         }
 
         // 요청 등록(유저가 추가 요청한 악기)

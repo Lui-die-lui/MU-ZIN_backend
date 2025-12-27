@@ -25,7 +25,9 @@ public interface ArtistInstrumentRepository extends JpaRepository<ArtistInstrume
     void deleteByArtistProfile_ArtistProfileId(Long artistProfileId);
 
     // flush 쓰거나 이거 쓰거나
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Modifying(
+//            clearAutomatically = true,
+            flushAutomatically = true)
     @Query("delete from ArtistInstrument ai where ai.artistProfile.artistProfileId = :profileId")
     void deleteAllByProfileId(@Param("profileId") Long profileId);
 }

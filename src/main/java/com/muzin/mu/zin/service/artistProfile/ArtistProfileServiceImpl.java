@@ -140,23 +140,26 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
         // 기존 매핑 전체 삭제 - 새로 갈아끼움
 //        artistInstrumentRepository.deleteByArtistProfile_ArtistProfileId(profile.getArtistProfileId());
 //        artistInstrumentRepository.flush(); // 바로 반영
-        artistInstrumentRepository.deleteAllByProfileId(profile.getArtistProfileId());
-//
+//        artistInstrumentRepository.deleteAllByProfileId(profile.getArtistProfileId());
+        artistInstrumentRepository.deleteByArtistProfile_ArtistProfileId(profile.getArtistProfileId());
+        artistInstrumentRepository.flush(); // delete 먼저 db에 반영
+
 //        // 최종 리스트로 재저장
-//        List<ArtistInstrument> mappings = instruments.stream()
-//                .map(inst -> new ArtistInstrument(profile, inst))
-//                .toList();
-//        artistInstrumentRepository.saveAll(mappings);
+        List<ArtistInstrument> mappings = instruments.stream()
+                .map(inst -> new ArtistInstrument(profile, inst))
+                .toList();
+        artistInstrumentRepository.saveAll(mappings);
 //
 //        return new ApiRespDto<>("success", "악기 목록이 저장되었습니다.", toResponse(profile));
         // 세션 없다고 터짐
+        // 응답은 방금 검증/조회한 instruments 로 만들기 (LAZY 컬렉션 접근 x)
         List<InstrumentResponse> instrumentResponses = instruments.stream()
                 .map(i -> new InstrumentResponse(i.getInstId(), i.getInstName()))
                 .toList();
 
         ArtistProfileResponse resp = new ArtistProfileResponse(
                 profile.getArtistProfileId(),
-                profile.getUser().getUserId(),
+                principalUser.getUserId(),
                 profile.getBio(),
                 profile.getCareer(),
                 profile.getMajorName(),

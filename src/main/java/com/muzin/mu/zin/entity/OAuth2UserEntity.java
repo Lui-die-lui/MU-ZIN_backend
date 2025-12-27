@@ -37,5 +37,4 @@ public class OAuth2UserEntity extends BaseTimeEntity {
 
     @Column(name = "provider_user_id", nullable = false, length = 255)
     private String providerUserId;
-
 }
