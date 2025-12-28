@@ -12,4 +12,7 @@ public interface LessonRepository extends JpaRepository<Lesson, Long> {
 
     // 본인 레슨 소유권 체크용
     Optional<Lesson> findByLessonIdAndArtistProfile_ArtistProfileId(Long lessonId, Long artistProfileId);
+
+    // 삭제 안 된 것만 목록 조회
+    List<Lesson> findAllByArtistProfile_ArtistProfileIdAndDeletedDtIsNullOrderByLessonIdDesc(Long artistProfileId);
 }

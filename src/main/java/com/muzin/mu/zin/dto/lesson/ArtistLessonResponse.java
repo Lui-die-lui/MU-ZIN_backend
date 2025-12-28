@@ -8,6 +8,10 @@ import java.util.List;
 public record ArtistLessonResponse(
         Long lessonId,
         String title,
+        String description,
+        String requirementText,
+        Integer price,
+        Integer durationMin,
         LessonMode mode,
         List<LessonStyleTagResponse> styleTags,
         LocalDateTime createDt,

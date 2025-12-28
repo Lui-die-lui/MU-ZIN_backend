@@ -38,6 +38,12 @@ public class LessonController {
         return lessonService.updateLesson(lessonId, req, principalUser);
     }
 
+    // 아티스트 레슨 삭제
+    @DeleteMapping("/{lessonId}")
+    public ApiRespDto<?> deleteLesson(@PathVariable Long lessonId, @AuthenticationPrincipal PrincipalUser principalUser) {
+        return lessonService.deleteLesson(lessonId, principalUser);
+    }
+
     // 아티스트 레슨 조회
     @GetMapping("/me")
     public ApiRespDto<?> getArtistLesson(@AuthenticationPrincipal PrincipalUser principalUser) {
@@ -59,4 +65,5 @@ public class LessonController {
             ) {
         return lessonStyleService.setLessonStyles(lessonId, req, principalUser);
     }
+
 }

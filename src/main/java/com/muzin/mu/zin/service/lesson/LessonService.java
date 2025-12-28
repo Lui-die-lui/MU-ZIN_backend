@@ -4,7 +4,6 @@ import com.muzin.mu.zin.dto.ApiRespDto;
 import com.muzin.mu.zin.dto.lesson.*;
 import com.muzin.mu.zin.entity.ArtistProfile;
 import com.muzin.mu.zin.entity.lesson.Lesson;
-import com.muzin.mu.zin.entity.lesson.LessonStatus;
 import com.muzin.mu.zin.repository.ArtistProfileRepository;
 import com.muzin.mu.zin.repository.lesson.LessonRepository;
 import com.muzin.mu.zin.repository.lesson.LessonStyleMapRepository;
@@ -35,7 +34,10 @@ public class LessonService {
                 .artistProfile(profile)
                 .title(req.title())
                 .mode(req.mode())
-                .status(LessonStatus.ACTIVE)
+                .durationMin(req.durationMin())
+                .price(req.price())
+                .description(req.description())
+                .requirementText(req.requirementText())
                 .build();
 
         Lesson saved = lessonRepository.save(lesson);
@@ -54,7 +56,7 @@ public class LessonService {
         Lesson lesson = lessonRepository.findByLessonIdAndArtistProfile_ArtistProfileId(lessonId, profile.getArtistProfileId())
                 .orElseThrow(() -> new IllegalArgumentException("레슨이 없거나 권한이 없습니다."));
 
-        lesson.applyUpdate(req.title(), req.mode());
+        lesson.applyUpdate(req.title(), req.mode(), req.description(), req.requirementText(),req.price(), req.durationMin());
 
         // 일단 status도 같이 바꿔줌
         if (req.status() != null) {
@@ -62,6 +64,24 @@ public class LessonService {
         }
 
         return new ApiRespDto<>("success", "레슨이 수정되었습니다.", null);
+    }
+
+    // soft delete
+    @Transactional
+    public ApiRespDto<?> deleteLesson(Long lessonId, PrincipalUser principalUser) {
+
+        ArtistProfile profile = artistProfileRepository.findByUser_UserId(principalUser.getUserId())
+                .orElseThrow(() -> new IllegalArgumentException("아티스트 프로필이 없습니다."));
+
+        Lesson lesson = lessonRepository.findByLessonIdAndArtistProfile_ArtistProfileId(lessonId, profile.getArtistProfileId())
+                .orElseThrow(() -> new IllegalArgumentException("레슨이 없거나 권한이 없습니다."));
+
+        if (lesson.isDeleted()) {
+            return new ApiRespDto<>("success", "이미 삭제된 레슨입니다.", null);
+        }
+
+        lesson.markDeleted(); // INACTIVE 상태로 바꿔줌
+        return new ApiRespDto<>("success", "레슨이 삭제되었습니다.", null);
     }
 
 
@@ -74,7 +94,7 @@ public class LessonService {
 
         // 레슨 스타일 태그 리스트
         List<Lesson> lessons = lessonRepository
-                .findAllByArtistProfile_ArtistProfileIdOrderByLessonIdDesc(profile.getArtistProfileId());
+                .findAllByArtistProfile_ArtistProfileIdAndDeletedDtIsNullOrderByLessonIdDesc(profile.getArtistProfileId());
 
         List<ArtistLessonResponse> resp = lessons.stream().map(l-> {
             List<LessonStyleTagResponse> styleTags = lessonStyleMapRepository
@@ -89,6 +109,10 @@ public class LessonService {
             return new ArtistLessonResponse(
                     l.getLessonId(),
                     l.getTitle(),
+                    l.getDescription(),
+                    l.getRequirementText(),
+                    l.getPrice(),
+                    l.getDurationMin(),
                     l.getMode(),
                     styleTags,
                     l.getCreateDt(),

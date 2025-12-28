@@ -36,8 +36,8 @@ public class ArtistProfile extends BaseTimeEntity {
     @Column(name = "bio", nullable = false, length = 255)
     private String bio;
 
-    @Lob // Large Object - TEXT 같은...
-    @Column(name = "career", nullable = false)
+//    @Lob // Large Object - TEXT 같은...
+    @Column(name = "career", nullable = false, columnDefinition = "TEXT")
     private String career;
 
     @Column(name = "major_name", nullable = false, length = 50)
@@ -52,8 +52,8 @@ public class ArtistProfile extends BaseTimeEntity {
     @Column(name = "rejected_reason_title", length = 200)
     private String rejectReasonTitle;
 
-    @Lob
-    @Column(name = "rejected_reason")
+//    @Lob
+    @Column(name = "rejected_reason", columnDefinition = "TEXT")
     private String rejectedReason;
 
     // 아티스트가 추가한 악기 리스트(악기 테이블 매핑)

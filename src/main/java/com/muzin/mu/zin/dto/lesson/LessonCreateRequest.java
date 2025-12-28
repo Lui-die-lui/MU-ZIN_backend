@@ -6,6 +6,10 @@ import jakarta.validation.constraints.NotNull;
 
 public record LessonCreateRequest(
         @NotBlank String title,
-        @NotNull LessonMode mode
+        @NotNull LessonMode mode,
+        @NotNull Integer durationMin,
+        Integer price,
+        String description,
+        String requirementText
         ) {
 }
