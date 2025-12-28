@@ -44,10 +44,16 @@ public class LessonController {
         return lessonService.deleteLesson(lessonId, principalUser);
     }
 
-    // 아티스트 레슨 조회
+    // 아티스트 레슨 리스트 조회
     @GetMapping("/me")
     public ApiRespDto<?> getArtistLesson(@AuthenticationPrincipal PrincipalUser principalUser) {
         return lessonService.getArtistLesson(principalUser);
+    }
+
+    // 아티스트 레슨 단일 조회
+    @GetMapping("/me/{lessonId}")
+    public ApiRespDto<?> getArtistLessonDetail(@PathVariable Long lessonId, @AuthenticationPrincipal PrincipalUser principalUser) {
+        return lessonService.getArtistLessonDetail(lessonId, principalUser);
     }
 
     // 태그 목록 조회 (프론트 칩/필터용)

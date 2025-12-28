@@ -114,6 +114,7 @@ public class LessonService {
                     l.getPrice(),
                     l.getDurationMin(),
                     l.getMode(),
+                    l.getStatus(),
                     styleTags,
                     l.getCreateDt(),
                     l.getUpdateDt()
@@ -123,4 +124,47 @@ public class LessonService {
 
         return new ApiRespDto<>("success", "", resp);
     }
+
+    // 아티스트 레슨 단일 조회
+    @Transactional(readOnly = true)
+    public ApiRespDto<ArtistLessonResponse> getArtistLessonDetail(Long lessonId, PrincipalUser principalUser) {
+
+        ArtistProfile profile = artistProfileRepository.findByUser_UserId(principalUser.getUserId())
+                .orElseThrow(() -> new IllegalArgumentException("아티스트 프로필이 없습니다."));
+
+        Lesson lesson = lessonRepository.findByLessonIdAndArtistProfile_ArtistProfileId(lessonId, profile.getArtistProfileId())
+                .orElseThrow(() -> new IllegalArgumentException("레슨이 없거나 권한이 없습니다."));
+
+        // 혹시 모르니까 걸어놓기(화면에 보여주진 않을건데 어떻게든 접근 할 가능성 때문에)
+        if (lesson.isDeleted()) {
+            throw new IllegalArgumentException("삭제된 레슨입니다.");
+        }
+
+        // 이거 api를 따로 빼고 구현해서 계속 이래야함;
+        List<LessonStyleTagResponse> styleTags = lessonStyleMapRepository
+                .findAllByLesson_LessonId(lesson.getLessonId())
+                .stream()
+                .map(m -> new LessonStyleTagResponse(
+                        m.getLessonStyleTag().getLessonStyleTagId(),
+                        m.getLessonStyleTag().getStyleName()
+                ))
+                .toList();
+
+        ArtistLessonResponse resp = new ArtistLessonResponse(
+                lesson.getLessonId(),
+                lesson.getTitle(),
+                lesson.getDescription(),
+                lesson.getRequirementText(),
+                lesson.getPrice(),
+                lesson.getDurationMin(),
+                lesson.getMode(),
+                lesson.getStatus(),
+                styleTags,
+                lesson.getCreateDt(),
+                lesson.getUpdateDt()
+        );
+
+        return new ApiRespDto<>("success","조회 완료", resp);
+    }
+
 }
