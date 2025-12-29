@@ -2,7 +2,11 @@ package com.muzin.mu.zin.repository.lesson;
 
 import com.muzin.mu.zin.entity.lesson.LessonTimeSlot;
 import com.muzin.mu.zin.entity.lesson.TimeSlotStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -24,5 +28,15 @@ public interface LessonTimeSlotRepository extends JpaRepository<LessonTimeSlot, 
     // 해당 슬롯의 현재 status가 맞는지 - 삭제 가능 여부 체크
     // 선언된 메서드들은 전부 파싱해서 구현 프록시를 만들어서 existBy라고 오타내면 오류뜸
     boolean existsByTimeSlotIdAndStatus(Long timeSlotId, TimeSlotStatus status);
+
+    // 만약 동시에 2명이 슬롯을 예약하려고 할 때 중복 예약 막기
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select ts
+            from LessonTimeSlot ts
+            join fetch ts.lesson
+            where ts.timeSlotId = :timeSlotId
+            """)
+    Optional<LessonTimeSlot> findByIdForUpdate(@Param("timeSlotId") Long timeSlotId);
 
 }

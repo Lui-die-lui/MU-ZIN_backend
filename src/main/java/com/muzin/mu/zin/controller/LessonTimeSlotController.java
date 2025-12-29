@@ -6,6 +6,7 @@ import com.muzin.mu.zin.dto.lesson.TimeSlotResponse;
 import com.muzin.mu.zin.security.model.PrincipalUser;
 import com.muzin.mu.zin.service.lesson.LessonTimeSlotService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,11 +21,12 @@ public class LessonTimeSlotController {
     private final LessonTimeSlotService lessonTimeSlotService;
 
     // 유저용 OPEN 슬롯 조회
+    // (iso = DateTimeFormat.ISO.DATE_TIME) = 프론트가 문자열 그대로 보내면 파싱이 깨질 수 있음. 
     @GetMapping("/{lessonId}/time-slots")
     public ApiRespDto<List<TimeSlotResponse>> getOpenSlots(
             @PathVariable Long lessonId,
-            @RequestParam LocalDateTime from,
-            @RequestParam LocalDateTime to
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to
             ) {
         return lessonTimeSlotService.getOpenSlot(lessonId, from, to);
     }

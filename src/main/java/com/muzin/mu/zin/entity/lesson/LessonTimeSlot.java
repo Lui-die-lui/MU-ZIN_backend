@@ -3,6 +3,7 @@ package com.muzin.mu.zin.entity.lesson;
 import com.muzin.mu.zin.entity.common.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
@@ -13,6 +14,7 @@ import java.time.LocalDateTime;
                 @UniqueConstraint(name = "uk_lesson_slot_start", columnNames = {"lesson_id", "start_dt"})
         }
 )
+@EntityListeners(AuditingEntityListener.class)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
