@@ -63,7 +63,32 @@ public class LessonService {
             lesson.changeStatus(req.status());
         }
 
-        return new ApiRespDto<>("success", "레슨이 수정되었습니다.", null);
+        // 스타일 태그도 같이 내려주기
+        List<LessonStyleTagResponse> styleTags = lessonStyleMapRepository
+                .findAllByLesson_LessonId(lesson.getLessonId())
+                .stream()
+                .map(m -> new LessonStyleTagResponse(
+                        m.getLessonStyleTag().getLessonStyleTagId(),
+                        m.getLessonStyleTag().getStyleName()
+                ))
+                .toList();
+
+        ArtistLessonResponse resp = new ArtistLessonResponse(
+                lesson.getLessonId(),
+                lesson.getTitle(),
+                lesson.getDescription(),
+                lesson.getRequirementText(),
+                lesson.getPrice(),
+                lesson.getDurationMin(),
+                lesson.getMode(),
+                lesson.getStatus(),
+                styleTags,
+                lesson.getCreateDt(),
+                lesson.getUpdateDt()
+        );
+
+
+        return new ApiRespDto<>("success", "레슨이 수정되었습니다.", resp);
     }
 
     // soft delete
