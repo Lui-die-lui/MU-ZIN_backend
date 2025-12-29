@@ -7,6 +7,7 @@ import com.muzin.mu.zin.service.OAuth2PrincipalUserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -84,9 +85,23 @@ public class SecurityConfig {
 
         http.addFilterBefore(jwtAuthnticationFilter, UsernamePasswordAuthenticationFilter.class);
 
-        http.authorizeHttpRequests(auth -> {
-            auth.requestMatchers("/auth/**", "/login", "/error", "/oauth2/**", "/login/oauth2/**",
+        http.authorizeHttpRequests(auth -> {auth
+
+                // 레슨 타임 슬롯 - 예약 시간 보기는 아무나 접근 가능 - 선택하고 예약 시
+                // 인증된 유저가 아니면 접근 불가 로그인 + 이메일 인증 완료된 유저만 접근 가능
+                .requestMatchers(HttpMethod.GET, "/lessons/me/**").authenticated()
+
+                .requestMatchers(HttpMethod.GET, "/lessons/**").permitAll()
+
+                .requestMatchers(HttpMethod.POST, "/lessons/**").authenticated()
+                .requestMatchers(HttpMethod.PUT,  "/lessons/**").authenticated()
+                .requestMatchers(HttpMethod.PATCH,"/lessons/**").authenticated()
+                .requestMatchers(HttpMethod.DELETE,"/lessons/**").authenticated()
+
+                .requestMatchers("/auth/**", "/login", "/error", "/oauth2/**", "/login/oauth2/**",
                     "/mail/verify", "/instruments/**", "/lessons/style-tags").permitAll();
+
+
             auth.anyRequest().authenticated();
         });
 

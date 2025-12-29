@@ -51,7 +51,7 @@ public class LessonTimeSlotController {
     }
 
     // 아티스트용 슬롯 삭제 (slotId 기반 - lessonId면 lesson 이 지워짐...)
-    @DeleteMapping("/me/time-slots/{lessonId}")
+    @DeleteMapping("/me/time-slots/{timeSlotId}")
     public ApiRespDto<?> deleteSlot(
             @PathVariable Long timeSlotId,
             @AuthenticationPrincipal PrincipalUser principalUser

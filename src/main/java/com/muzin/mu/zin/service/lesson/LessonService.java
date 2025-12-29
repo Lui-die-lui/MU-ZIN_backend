@@ -4,9 +4,12 @@ import com.muzin.mu.zin.dto.ApiRespDto;
 import com.muzin.mu.zin.dto.lesson.*;
 import com.muzin.mu.zin.entity.ArtistProfile;
 import com.muzin.mu.zin.entity.lesson.Lesson;
+import com.muzin.mu.zin.entity.lesson.LessonStyleMap;
+import com.muzin.mu.zin.entity.lesson.LessonStyleTag;
 import com.muzin.mu.zin.repository.ArtistProfileRepository;
 import com.muzin.mu.zin.repository.lesson.LessonRepository;
 import com.muzin.mu.zin.repository.lesson.LessonStyleMapRepository;
+import com.muzin.mu.zin.repository.lesson.LessonStyleTagRepository;
 import com.muzin.mu.zin.security.model.PrincipalUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,6 +24,7 @@ public class LessonService {
 
     private final LessonRepository lessonRepository;
     private final LessonStyleMapRepository lessonStyleMapRepository;
+    private final LessonStyleTagRepository lessonStyleTagRepository;
     private final ArtistProfileRepository artistProfileRepository;
 
     // 새 레슨 만들기
@@ -29,6 +33,7 @@ public class LessonService {
 
         ArtistProfile profile = artistProfileRepository.findByUser_UserId(principalUser.getUserId())
                 .orElseThrow(() -> new IllegalArgumentException("아티스트 프로필이 없습니다."));
+
 
         Lesson lesson = Lesson.builder()
                 .artistProfile(profile)
@@ -42,8 +47,37 @@ public class LessonService {
 
         Lesson saved = lessonRepository.save(lesson);
 
+        //  태그 비어있으면 빈 배열 / 아니면 중복 제거해서 반환
+        List<Long> tagIds = (req.styleTagIds() == null) ? List.of()
+                : req.styleTagIds().stream().distinct().toList();
+
+        // 스타일 태그를 담아줄 빈 배열
+        List<LessonStyleTagResponse> styleTags = List.of();
+
+        // 태그 아이디가 비어있지 않으면
+        if (!tagIds.isEmpty()) {
+            List<LessonStyleTag> tags = lessonStyleTagRepository.findAllById(tagIds);
+
+            List<LessonStyleMap> maps = tags.stream()
+                    .map(tag -> LessonStyleMap.builder()
+                            .lesson(saved)
+                            .lessonStyleTag(tag)
+                            .build())
+                    .toList();
+
+            lessonStyleMapRepository.saveAll(maps);
+
+            // 응답에 담아줄 태그 리스트 생성
+            styleTags = tags.stream()
+                    .map(t -> new LessonStyleTagResponse(t.getLessonStyleTagId(), t.getStyleName()))
+                    .toList();
+
+
+        }
+
         return new ApiRespDto<>("success", "레슨이 생성되었습니다.", new LessonCreateResponse(
-                saved.getLessonId(), saved.getTitle(), saved.getMode(), saved.getStatus()));
+                saved.getLessonId(), saved.getTitle(), saved.getMode(), saved.getStatus(), styleTags));
+
     }
 
     // 아티스트 본인 레슨인지 검증 + 수정
@@ -64,14 +98,7 @@ public class LessonService {
         }
 
         // 스타일 태그도 같이 내려주기
-        List<LessonStyleTagResponse> styleTags = lessonStyleMapRepository
-                .findAllByLesson_LessonId(lesson.getLessonId())
-                .stream()
-                .map(m -> new LessonStyleTagResponse(
-                        m.getLessonStyleTag().getLessonStyleTagId(),
-                        m.getLessonStyleTag().getStyleName()
-                ))
-                .toList();
+        List<LessonStyleTagResponse> styleTags = loadStyleTags(lesson.getLessonId());
 
         ArtistLessonResponse resp = new ArtistLessonResponse(
                 lesson.getLessonId(),
@@ -166,14 +193,15 @@ public class LessonService {
         }
 
         // 이거 api를 따로 빼고 구현해서 계속 이래야함;
-        List<LessonStyleTagResponse> styleTags = lessonStyleMapRepository
-                .findAllByLesson_LessonId(lesson.getLessonId())
-                .stream()
-                .map(m -> new LessonStyleTagResponse(
-                        m.getLessonStyleTag().getLessonStyleTagId(),
-                        m.getLessonStyleTag().getStyleName()
-                ))
-                .toList();
+//        List<LessonStyleTagResponse> styleTags = lessonStyleMapRepository
+//                .findAllByLesson_LessonId(lesson.getLessonId())
+//                .stream()
+//                .map(m -> new LessonStyleTagResponse(
+//                        m.getLessonStyleTag().getLessonStyleTagId(),
+//                        m.getLessonStyleTag().getStyleName()
+//                ))
+//                .toList();
+        List<LessonStyleTagResponse> styleTags = loadStyleTags(lesson.getLessonId());
 
         ArtistLessonResponse resp = new ArtistLessonResponse(
                 lesson.getLessonId(),
@@ -190,6 +218,16 @@ public class LessonService {
         );
 
         return new ApiRespDto<>("success","조회 완료", resp);
+    }
+
+    // 스타일 태그 유틸
+    private List<LessonStyleTagResponse> loadStyleTags(Long lessonId) {
+        return lessonStyleMapRepository.findAllByLesson_LessonId(lessonId).stream()
+                .map(m -> new LessonStyleTagResponse(
+                        m.getLessonStyleTag().getLessonStyleTagId(),
+                        m.getLessonStyleTag().getStyleName()
+                ))
+                .toList();
     }
 
 }

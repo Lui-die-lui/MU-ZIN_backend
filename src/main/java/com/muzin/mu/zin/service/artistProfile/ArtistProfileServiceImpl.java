@@ -163,6 +163,7 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
                 profile.getBio(),
                 profile.getCareer(),
                 profile.getMajorName(),
+                profile.getUser().getArtistStatus(), // 상태 소유자 = 유저 이기때문에 dto 내에 있어도 이렇게 가져와야함
                 instrumentResponses
         );
 
@@ -216,6 +217,7 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
                 profile.getBio(),
                 profile.getCareer(),
                 profile.getMajorName(),
+                profile.getUser().getArtistStatus(),
                 instruments
 
         );
