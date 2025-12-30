@@ -11,13 +11,13 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table (
-        name = "lesson_reservation",
-        uniqueConstraints = {
-                // 한 슬롯은 한 예약만 갖게 됨 - 동일 시간 중복 예약 db에서 막음
-                @UniqueConstraint(name = "uk_lesson_reservation_slot", columnNames = "slot_id")
-        }
+        name = "lesson_reservation"
+//        uniqueConstraints = {
+//                // 한 슬롯은 한 예약만 갖게 됨 - 동일 시간 중복 예약 db에서 막음
+//                @UniqueConstraint(name = "uk_lesson_reservation_slot", columnNames = "slot_id")
+//        }
 )
-@EntityListeners(AutoCloseable.class) // 이게 뭔데
+//@EntityListeners(AutoCloseable.class) // 이게 뭔데
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
@@ -40,7 +40,7 @@ public class LessonReservation extends BaseTimeEntity {
 
     // time_slot_id UK
     @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "slot_id", nullable = false, unique = true)
+    @JoinColumn(name = "slot_id", nullable = false)
     private LessonTimeSlot timeSlot;
 
     @Enumerated(EnumType.STRING)
