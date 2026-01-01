@@ -6,6 +6,7 @@ import com.muzin.mu.zin.dto.auth.SignupRequest;
 import com.muzin.mu.zin.security.model.PrincipalUser;
 import com.muzin.mu.zin.service.AuthService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -18,9 +19,12 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
     private final AuthService authService;
 
+    // 일반 200 ok 말고 커스텀 예외로 던져주는 중 - 이메일 중복 확인때문에
     @PostMapping("/signup")
-    public ResponseEntity<?> signup(@RequestBody SignupRequest signupRequest) {
-        return ResponseEntity.ok(authService.signup(signupRequest));
+    public ResponseEntity<ApiRespDto<?>> signup(@RequestBody SignupRequest req) {
+        authService.signup(req);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new ApiRespDto<>("success", "회원가입 성공", null));
     }
 
     @PostMapping("/signin")

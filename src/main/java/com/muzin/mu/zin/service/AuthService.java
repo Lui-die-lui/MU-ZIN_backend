@@ -6,6 +6,7 @@ import com.muzin.mu.zin.dto.auth.SignupRequest;
 import com.muzin.mu.zin.entity.Role;
 import com.muzin.mu.zin.entity.User;
 import com.muzin.mu.zin.entity.UserRole;
+import com.muzin.mu.zin.exception.DuplicateEmailException;
 import com.muzin.mu.zin.repository.RoleRepository;
 import com.muzin.mu.zin.repository.UserRepository;
 import com.muzin.mu.zin.security.jwt.JwtUtils;
@@ -29,9 +30,13 @@ public class AuthService {
     // 회원가입
     @Transactional
     public ApiRespDto<?> signup(SignupRequest request) {
-        Optional<User> user = userRepository.findByEmail(request.email());
-        if(user.isPresent()) {
-            return new ApiRespDto<>("failed", "이미 사용중인 이메일입니다.", null);
+//        Optional<User> user = userRepository.findByEmail(request.email());
+//        if(user.isPresent()) {
+//            return new ApiRespDto<>("failed", "이미 사용중인 이메일입니다.", null);
+//        }
+        // 이메일 중복 검증
+        if (userRepository.existsByEmail(request.email())) {
+            throw new DuplicateEmailException("이미 사용중인 이메일입니다.");
         }
 
         User newUser = User
@@ -64,6 +69,7 @@ public class AuthService {
         // 이메일로 유저 조회
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new RuntimeException("이메일 또는 비밀번호가 올바르지 않습니다."));
+
 
         // 비밀번호 비교
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
