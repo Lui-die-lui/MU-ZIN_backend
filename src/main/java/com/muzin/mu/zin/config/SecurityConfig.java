@@ -52,8 +52,10 @@ public class SecurityConfig {
         // CORS 설정 객체 생성
         CorsConfiguration corsConfiguration = new CorsConfiguration();
         // 허용할 Origin 패턴 설정
-        // 나중에 실제 도메인만 열어주는 식으로 사용하면 됨
-        corsConfiguration.addAllowedOriginPattern(CorsConfiguration.ALL);
+//        // 나중에 실제 도메인만 열어주는 식으로 사용하면 됨
+//        corsConfiguration.addAllowedOriginPattern(CorsConfiguration.ALL);
+        corsConfiguration.addAllowedOriginPattern("http://localhost:5173");
+        corsConfiguration.addAllowedOriginPattern("http://127.0.0.1:5173"); // (선택) 로컬 IP로 접속할 때 대비
         // 허용 헤더 설정
         corsConfiguration.addAllowedHeader(CorsConfiguration.ALL);
         // 쿠키 / 인증정보 포함한 요청 허용
