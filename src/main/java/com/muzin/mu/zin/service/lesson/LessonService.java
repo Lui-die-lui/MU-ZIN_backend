@@ -3,15 +3,16 @@ package com.muzin.mu.zin.service.lesson;
 import com.muzin.mu.zin.dto.ApiRespDto;
 import com.muzin.mu.zin.dto.lesson.*;
 import com.muzin.mu.zin.entity.ArtistProfile;
-import com.muzin.mu.zin.entity.lesson.Lesson;
-import com.muzin.mu.zin.entity.lesson.LessonStyleMap;
-import com.muzin.mu.zin.entity.lesson.LessonStyleTag;
+import com.muzin.mu.zin.entity.lesson.*;
 import com.muzin.mu.zin.repository.ArtistProfileRepository;
 import com.muzin.mu.zin.repository.lesson.LessonRepository;
 import com.muzin.mu.zin.repository.lesson.LessonStyleMapRepository;
 import com.muzin.mu.zin.repository.lesson.LessonStyleTagRepository;
 import com.muzin.mu.zin.security.model.PrincipalUser;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -136,6 +137,31 @@ public class LessonService {
         return new ApiRespDto<>("success", "레슨이 삭제되었습니다.", null);
     }
 
+    // 아티스트 레슨 검색
+    @Transactional(readOnly = true)
+    public ApiRespDto<List<LessonSearchResponse>> searchLessons(String keyword, LessonMode mode, List<Long> styleTagIds, LessonSort sort) {
+
+        String k = (keyword == null || keyword.isBlank()) ? null : keyword.trim();
+        List<Long> tags = (styleTagIds == null || styleTagIds.isEmpty()) ? null : styleTagIds;
+
+        Pageable pageable = PageRequest.of(0, 200, toSort(sort));
+        List<Lesson> lessons = lessonRepository.searchPublicLessons(k, mode, tags, pageable);
+
+        List<LessonSearchResponse> resp = lessons.stream()
+                .map(l -> new LessonSearchResponse(
+                        l.getLessonId(),
+                        l.getTitle(),
+                        l.getDescription(),
+                        l.getPrice(),
+                        l.getDurationMin(),
+                        l.getMode(),
+                        l.getStatus()
+                ))
+                .toList();
+
+        return new ApiRespDto<>("success", "", resp);
+    };
+
 
     // 아티스트 내 레슨 목록 조회
     @Transactional(readOnly = true)
@@ -228,6 +254,18 @@ public class LessonService {
                         m.getLessonStyleTag().getStyleName()
                 ))
                 .toList();
+    }
+
+    // Sort 매핑
+    private Sort toSort(LessonSort sort) {
+        return switch (sort) {
+            case LATEST -> Sort.by(Sort.Order.desc("updateDt"));
+            case OLDEST -> Sort.by(Sort.Order.asc("createDt"));
+            case PRICE_ASC -> Sort.by(Sort.Order.asc("price").nullsLast())
+                    .and(Sort.by(Sort.Order.desc("updateDt")));
+            case PRICE_DESC -> Sort.by(Sort.Order.desc("price").nullsLast())
+                    .and(Sort.by(Sort.Order.desc("updateDt")));
+        };
     }
 
 }

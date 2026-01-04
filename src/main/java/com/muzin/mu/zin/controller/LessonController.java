@@ -4,6 +4,8 @@ import com.muzin.mu.zin.dto.ApiRespDto;
 import com.muzin.mu.zin.dto.lesson.LessonCreateRequest;
 import com.muzin.mu.zin.dto.lesson.LessonUpdateRequest;
 import com.muzin.mu.zin.dto.lesson.SetLessonStylesRequest;
+import com.muzin.mu.zin.entity.lesson.LessonMode;
+import com.muzin.mu.zin.entity.lesson.LessonSort;
 import com.muzin.mu.zin.security.model.PrincipalUser;
 import com.muzin.mu.zin.service.lesson.LessonService;
 import com.muzin.mu.zin.service.lesson.LessonStyleService;
@@ -11,6 +13,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -43,6 +47,18 @@ public class LessonController {
     public ApiRespDto<?> deleteLesson(@PathVariable Long lessonId, @AuthenticationPrincipal PrincipalUser principalUser) {
         return lessonService.deleteLesson(lessonId, principalUser);
     }
+
+    // 아티스트 레슨 검색 (나중에 지역 기반 추가 예정)
+    @GetMapping
+    public ApiRespDto<?> searchLessons(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) LessonMode mode,
+            @RequestParam(required = false) List<Long> styleTagIds,
+            @RequestParam(defaultValue = "LATEST") LessonSort sort
+    ) {
+        return lessonService.searchLessons(keyword, mode, styleTagIds, sort);
+    }
+
 
     // 아티스트 레슨 리스트 조회
     @GetMapping("/me")

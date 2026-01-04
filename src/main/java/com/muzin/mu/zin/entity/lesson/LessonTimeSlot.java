@@ -33,6 +33,9 @@ public class LessonTimeSlot extends BaseTimeEntity {
     @Column(name = "start_dt", nullable = false)
     private LocalDateTime startDt;
 
+    @Column(name = "end_dt", nullable = false)
+    private LocalDateTime endDt;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     @Builder.Default

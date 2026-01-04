@@ -5,7 +5,6 @@ import com.muzin.mu.zin.dto.lesson.TimeSlotCreateRequest;
 import com.muzin.mu.zin.dto.lesson.TimeSlotResponse;
 import com.muzin.mu.zin.entity.ArtistProfile;
 import com.muzin.mu.zin.entity.lesson.Lesson;
-import com.muzin.mu.zin.entity.lesson.LessonStatus;
 import com.muzin.mu.zin.entity.lesson.LessonTimeSlot;
 import com.muzin.mu.zin.entity.lesson.TimeSlotStatus;
 import com.muzin.mu.zin.repository.ArtistProfileRepository;
@@ -13,7 +12,7 @@ import com.muzin.mu.zin.repository.lesson.LessonRepository;
 import com.muzin.mu.zin.repository.lesson.LessonTimeSlotRepository;
 import com.muzin.mu.zin.security.model.PrincipalUser;
 import lombok.RequiredArgsConstructor;
-import org.hibernate.boot.model.naming.IllegalIdentifierException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +28,7 @@ public class LessonTimeSlotService {
     private final ArtistProfileRepository artistProfileRepository;
 
     // 유저용 OPEN 슬롯 조회
+    @Transactional(readOnly = true)
     public ApiRespDto<List<TimeSlotResponse>> getOpenSlot(Long lessonId, LocalDateTime from, LocalDateTime to) {
 
         Lesson lesson = lessonRepository.findById(lessonId)
@@ -39,15 +39,14 @@ public class LessonTimeSlotService {
             throw new IllegalArgumentException("삭제된 레슨입니다.");
         }
 
-        // 레슨 진행 시간
-        int duration = lesson.getDurationMin();
 
         List<LessonTimeSlot> slots = lessonTimeSlotRepository
                 .findAllByLesson_LessonIdAndStartDtBetweenOrderByStartDtAsc(lessonId, from, to);
 
         List<TimeSlotResponse> resp = slots.stream()
                 .filter(s -> s.getStatus() == TimeSlotStatus.OPEN)
-                .map(s -> toResponse(s, duration))
+                .filter(s-> !s.getStartDt().isBefore(LocalDateTime.now())) // 과거시간 조회 막음
+                .map(this::toResponse)
                 .toList();
 
         return new ApiRespDto<>("success","",resp);
@@ -64,13 +63,12 @@ public class LessonTimeSlotService {
             return new ApiRespDto<>("success", "", List.of());
         }
 
-        int duration = lesson.getDurationMin();
 
         List<LessonTimeSlot> slots = lessonTimeSlotRepository
                 .findAllByLesson_LessonIdAndStartDtBetweenOrderByStartDtAsc(lessonId, from, to);
 
         List<TimeSlotResponse> resp = slots.stream()
-                .map(s -> toResponse(s, duration)) // 아티스트 전체 상태 반환
+                .map(this::toResponse) // 아티스트 전체 상태 반환
                 .toList();
 
         return new ApiRespDto<>("success", "", resp);
@@ -91,29 +89,38 @@ public class LessonTimeSlotService {
             throw new IllegalArgumentException("등록할 시간이 없습니다.");
         }
 
+        // 입력되는 진행 시간
+        int duration = lesson.getDurationMin();
+        LocalDateTime now = LocalDateTime.now();
+
         // 요청 내 중복 제거
         List<LocalDateTime> unique = req.startDts().stream().distinct().toList();
 
         List<LessonTimeSlot> toSave = unique.stream()
                 // 과거 시간 방지
-                .filter(start -> !start.isBefore(LocalDateTime.now()))
+                .filter(start -> !start.isBefore(now))
                 // DB 중복 방지
                 .filter(start -> !lessonTimeSlotRepository.existsByLesson_LessonIdAndStartDt(lessonId, start))
                 .map(start -> LessonTimeSlot.builder()
                         .lesson(lesson)
                         .startDt(start)
+                        .endDt(start.plusMinutes(duration)) // 저장되는 진짜 endDt
                         .status(TimeSlotStatus.OPEN)
                         .build())
                 .toList();
 
-        List<LessonTimeSlot> saved = lessonTimeSlotRepository.saveAll(toSave);
+        // 유니크 충돌 예외 잡기
+        try {
+            List<LessonTimeSlot> saved = lessonTimeSlotRepository.saveAll(toSave);
 
-        int duration = lesson.getDurationMin();
-        List<TimeSlotResponse> resp = saved.stream()
-                .map(s -> toResponse(s, duration))
-                .toList();
+            List<TimeSlotResponse> resp = saved.stream()
+                    .map(this::toResponse)
+                    .toList();
 
-        return new ApiRespDto<>("success", "", resp);
+            return new ApiRespDto<>("success", "", resp);
+        } catch (DataIntegrityViolationException e) {
+            throw new IllegalArgumentException("이미 등록된 시간이 포함되어 있습니다.");
+        }
     }
 
 
@@ -186,12 +193,12 @@ public class LessonTimeSlotService {
                 .orElseThrow(() -> new IllegalArgumentException("슬롯이 없거나 권한이 없습니다."));
     }
 
-    private TimeSlotResponse toResponse(LessonTimeSlot slot, int durationMin) {
-        LocalDateTime start = slot.getStartDt();
+    private TimeSlotResponse toResponse(LessonTimeSlot slot) {
+//        LocalDateTime start = slot.getStartDt();
         return new TimeSlotResponse(
                 slot.getTimeSlotId(),
-                start,
-                start.plusMinutes(durationMin),
+                slot.getStartDt(),
+                slot.getEndDt(),
                 slot.getStatus()
         );
     }

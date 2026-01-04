@@ -1,7 +1,11 @@
 package com.muzin.mu.zin.repository.lesson;
 
 import com.muzin.mu.zin.entity.lesson.Lesson;
+import com.muzin.mu.zin.entity.lesson.LessonMode;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -15,4 +19,31 @@ public interface LessonRepository extends JpaRepository<Lesson, Long> {
 
     // 삭제 안 된 것만 목록 조회
     List<Lesson> findAllByArtistProfile_ArtistProfileIdAndDeletedDtIsNullOrderByLessonIdDesc(Long artistProfileId);
+
+    // 검색 -
+    // 스타일 태그는 매핑 테이블 있음 - join 필요
+    // 검색란이 빈 채로 검색을 하면 (빈 문자열이면) 그냥 전체조회 - 나중에 유저위치 기반 시에 있는 레슨 받아올 예정
+    @Query("""
+            select distinct l
+            from Lesson l
+            left join LessonStyleMap m on m.lesson = l
+            left join m.lessonStyleTag t
+            where l.deletedDt is null
+            and l.status = com.muzin.mu.zin.entity.lesson.LessonStatus.ACTIVE
+            and (:mode is null or l.mode = :mode)
+            and (
+            :keyword is null or :keyword = '' or
+            lower(l.title) like lower(concat('%', :keyword, '%')) or
+                                     lower(coalesce(l.description, '')) like lower(concat('%', :keyword, '%'))
+            )
+            and (
+            :styleTagIds is null or t.lessonStyleTagId in :styleTagIds
+            )
+            """)
+    List<Lesson> searchPublicLessons(
+            @Param("keyword") String keyword,
+            @Param("mode")LessonMode mode,
+            @Param("styleTagIds") List<Long> styleTagIds,
+            Pageable pageable
+            );
 }
