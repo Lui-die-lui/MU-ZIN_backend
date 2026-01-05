@@ -1,8 +1,11 @@
 package com.muzin.mu.zin.service.lesson;
 
 import com.muzin.mu.zin.dto.ApiRespDto;
+import com.muzin.mu.zin.dto.artist.ArtistProfileResponse;
+import com.muzin.mu.zin.dto.artist.ArtistSummaryResponse;
 import com.muzin.mu.zin.dto.lesson.*;
 import com.muzin.mu.zin.entity.ArtistProfile;
+import com.muzin.mu.zin.entity.User;
 import com.muzin.mu.zin.entity.lesson.*;
 import com.muzin.mu.zin.repository.ArtistProfileRepository;
 import com.muzin.mu.zin.repository.lesson.LessonRepository;
@@ -98,6 +101,7 @@ public class LessonService {
             lesson.changeStatus(req.status());
         }
 
+
         // 스타일 태그도 같이 내려주기
         List<LessonStyleTagResponse> styleTags = loadStyleTags(lesson.getLessonId());
 
@@ -113,6 +117,7 @@ public class LessonService {
                 styleTags,
                 lesson.getCreateDt(),
                 lesson.getUpdateDt()
+
         );
 
 
@@ -137,30 +142,6 @@ public class LessonService {
         return new ApiRespDto<>("success", "레슨이 삭제되었습니다.", null);
     }
 
-    // 아티스트 레슨 검색
-    @Transactional(readOnly = true)
-    public ApiRespDto<List<LessonSearchResponse>> searchLessons(String keyword, LessonMode mode, List<Long> styleTagIds, LessonSort sort) {
-
-        String k = (keyword == null || keyword.isBlank()) ? null : keyword.trim();
-        List<Long> tags = (styleTagIds == null || styleTagIds.isEmpty()) ? null : styleTagIds;
-
-        Pageable pageable = PageRequest.of(0, 200, toSort(sort));
-        List<Lesson> lessons = lessonRepository.searchPublicLessons(k, mode, tags, pageable);
-
-        List<LessonSearchResponse> resp = lessons.stream()
-                .map(l -> new LessonSearchResponse(
-                        l.getLessonId(),
-                        l.getTitle(),
-                        l.getDescription(),
-                        l.getPrice(),
-                        l.getDurationMin(),
-                        l.getMode(),
-                        l.getStatus()
-                ))
-                .toList();
-
-        return new ApiRespDto<>("success", "", resp);
-    };
 
 
     // 아티스트 내 레슨 목록 조회
@@ -245,6 +226,79 @@ public class LessonService {
 
         return new ApiRespDto<>("success","조회 완료", resp);
     }
+
+    // 레슨 검색(레슨 리스트)
+    @Transactional(readOnly = true)
+    public ApiRespDto<List<LessonSearchResponse>> searchLessons(String keyword, LessonMode mode, List<Long> styleTagIds, LessonSort sort) {
+
+        String k = (keyword == null || keyword.isBlank()) ? null : keyword.trim();
+        List<Long> tags = (styleTagIds == null || styleTagIds.isEmpty()) ? null : styleTagIds;
+
+        Pageable pageable = PageRequest.of(0, 200, toSort(sort));
+        List<Lesson> lessons = lessonRepository.searchPublicLessons(k, mode, tags, pageable);
+
+        List<LessonSearchResponse> resp = lessons.stream()
+                .map(l -> new LessonSearchResponse(
+                        l.getLessonId(),
+                        l.getTitle(),
+                        l.getDescription(),
+                        l.getPrice(),
+                        l.getDurationMin(),
+                        l.getMode(),
+                        l.getStatus()
+                ))
+                .toList();
+
+        return new ApiRespDto<>("success", "", resp);
+    };
+
+    // 레슨 디테일 단일 조회
+    @Transactional(readOnly = true)
+    public ApiRespDto<LessonDetailResponse> getPublicLessonDetail(Long lessonId) {
+
+        Lesson lesson = lessonRepository.findPublicDetailById(lessonId)
+                .orElseThrow(() -> new IllegalArgumentException("레슨이 없습니다."));
+
+        if (lesson.isDeleted()) {
+            throw new IllegalArgumentException("삭제된 레슨입니다.");
+        }
+
+        // 비활성 레슨 숨기기
+        if (lesson.getStatus() != LessonStatus.ACTIVE) {
+            throw new IllegalArgumentException("비활성 레슨입니다.");
+        }
+
+        List<LessonStyleTagResponse> styleTags = loadStyleTags(lesson.getLessonId());
+
+        ArtistProfile profile = lesson.getArtistProfile();
+        User user = profile.getUser();
+
+        ArtistSummaryResponse artist = new ArtistSummaryResponse(
+                profile.getArtistProfileId(),
+                user.getUsername(),
+                user.getProfileImgUrl()
+        );
+
+        LessonDetailResponse resp = new LessonDetailResponse(
+                lesson.getLessonId(),
+                lesson.getTitle(),
+                lesson.getDescription(),
+                lesson.getRequirementText(),
+                lesson.getPrice(),
+                lesson.getDurationMin(),
+                lesson.getMode(),
+                lesson.getStatus(),
+                styleTags,
+                lesson.getCreateDt(),
+                lesson.getUpdateDt(),
+                artist
+        );
+
+        return new ApiRespDto<>("success", "조회 완료", resp);
+    }
+
+
+
 
     // 스타일 태그 유틸
     private List<LessonStyleTagResponse> loadStyleTags(Long lessonId) {

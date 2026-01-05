@@ -8,6 +8,8 @@ import java.util.List;
 public record ArtistProfileResponse(
         Long artistProfileId,
         Long userId,
+        String username,
+        String profileImgUrl,
         String bio,
         String career,
         String majorName,

@@ -46,4 +46,12 @@ public interface LessonRepository extends JpaRepository<Lesson, Long> {
             @Param("styleTagIds") List<Long> styleTagIds,
             Pageable pageable
             );
+
+    @Query("""
+            select l from Lesson l
+            join fetch l.artistProfile ap
+            join fetch ap.user u
+            where l.lessonId = :lessonId
+            """)
+    Optional<Lesson> findPublicDetailById(Long lessonId);
 }
