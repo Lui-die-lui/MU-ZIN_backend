@@ -6,6 +6,7 @@ import com.muzin.mu.zin.dto.artist.ArtistSummaryResponse;
 import com.muzin.mu.zin.dto.lesson.*;
 import com.muzin.mu.zin.entity.ArtistProfile;
 import com.muzin.mu.zin.entity.User;
+import com.muzin.mu.zin.entity.instrument.InstrumentCategory;
 import com.muzin.mu.zin.entity.lesson.*;
 import com.muzin.mu.zin.repository.ArtistProfileRepository;
 import com.muzin.mu.zin.repository.lesson.LessonRepository;
@@ -229,13 +230,20 @@ public class LessonService {
 
     // 레슨 검색(레슨 리스트)
     @Transactional(readOnly = true)
-    public ApiRespDto<List<LessonSearchResponse>> searchLessons(String keyword, LessonMode mode, List<Long> styleTagIds, LessonSort sort) {
+    public ApiRespDto<List<LessonSearchResponse>> searchLessons(
+            String keyword,
+            LessonMode mode,
+            List<Long> styleTagIds,
+            InstrumentCategory instCategory,
+            List<Long> instIds,
+            LessonSort sort) {
 
         String k = (keyword == null || keyword.isBlank()) ? null : keyword.trim();
         List<Long> tags = (styleTagIds == null || styleTagIds.isEmpty()) ? null : styleTagIds;
-
+        List<Long> inst = (instIds == null || instIds.isEmpty()) ? null : instIds;
         Pageable pageable = PageRequest.of(0, 200, toSort(sort));
-        List<Lesson> lessons = lessonRepository.searchPublicLessons(k, mode, tags, pageable);
+
+        List<Lesson> lessons = lessonRepository.searchPublicLessons(k, mode, tags, instCategory, inst, pageable);
 
         List<LessonSearchResponse> resp = lessons.stream()
                 .map(l -> new LessonSearchResponse(

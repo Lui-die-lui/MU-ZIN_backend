@@ -1,5 +1,6 @@
 package com.muzin.mu.zin.repository.lesson;
 
+import com.muzin.mu.zin.entity.instrument.InstrumentCategory;
 import com.muzin.mu.zin.entity.lesson.Lesson;
 import com.muzin.mu.zin.entity.lesson.LessonMode;
 import org.springframework.data.domain.Pageable;
@@ -36,14 +37,17 @@ public interface LessonRepository extends JpaRepository<Lesson, Long> {
             lower(l.title) like lower(concat('%', :keyword, '%')) or
                                      lower(coalesce(l.description, '')) like lower(concat('%', :keyword, '%'))
             )
-            and (
-            :styleTagIds is null or t.lessonStyleTagId in :styleTagIds
-            )
+            and (:styleTagIds is null or t.lessonStyleTagId in :styleTagIds)
+            and (:instIds is null or l.instrument.instId in :instIds)
+            and (:instCategory is null or l.instrument.category = :instCategory)
+            
             """)
     List<Lesson> searchPublicLessons(
             @Param("keyword") String keyword,
             @Param("mode")LessonMode mode,
             @Param("styleTagIds") List<Long> styleTagIds,
+            @Param("instCategory") InstrumentCategory instCategory,
+            @Param("instIds") List<Long> instIds,
             Pageable pageable
             );
 

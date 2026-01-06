@@ -5,6 +5,7 @@ import com.muzin.mu.zin.dto.lesson.LessonCreateRequest;
 import com.muzin.mu.zin.dto.lesson.LessonDetailResponse;
 import com.muzin.mu.zin.dto.lesson.LessonUpdateRequest;
 import com.muzin.mu.zin.dto.lesson.SetLessonStylesRequest;
+import com.muzin.mu.zin.entity.instrument.InstrumentCategory;
 import com.muzin.mu.zin.entity.lesson.LessonMode;
 import com.muzin.mu.zin.entity.lesson.LessonSort;
 import com.muzin.mu.zin.security.model.PrincipalUser;
@@ -44,7 +45,7 @@ public class LessonController {
     }
 
     // 아티스트 레슨 삭제
-    @DeleteMapping("/{lessonId}")
+    @DeleteMapping("/me/{lessonId}")
     public ApiRespDto<?> deleteLesson(@PathVariable Long lessonId, @AuthenticationPrincipal PrincipalUser principalUser) {
         return lessonService.deleteLesson(lessonId, principalUser);
     }
@@ -84,9 +85,11 @@ public class LessonController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) LessonMode mode,
             @RequestParam(required = false) List<Long> styleTagIds,
+            @RequestParam(required = false) InstrumentCategory instrumentCategory,
+            @RequestParam(required = false) List<Long> instIds,
             @RequestParam(defaultValue = "LATEST") LessonSort sort
     ) {
-        return lessonService.searchLessons(keyword, mode, styleTagIds, sort);
+        return lessonService.searchLessons(keyword, mode, styleTagIds, instrumentCategory, instIds, sort);
     }
 
     // 레슨 단일 조회

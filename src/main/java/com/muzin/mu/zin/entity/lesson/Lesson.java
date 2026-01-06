@@ -2,6 +2,7 @@ package com.muzin.mu.zin.entity.lesson;
 
 import com.muzin.mu.zin.entity.ArtistProfile;
 import com.muzin.mu.zin.entity.common.BaseTimeEntity;
+import com.muzin.mu.zin.entity.instrument.Instrument;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -37,6 +38,11 @@ public class Lesson extends BaseTimeEntity {
 
     @Column(name = "price")
     private Integer price;
+
+    // 레슨에 악기 붙여줌
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "inst_id")
+    private Instrument instrument;
 
     // 소요 시간
     @Column(name = "duration_min", nullable = false)
