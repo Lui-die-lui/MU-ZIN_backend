@@ -35,8 +35,8 @@ public class LessonTimeSlotController {
     @GetMapping("/me/{lessonId}/time-slots")
     public ApiRespDto<List<TimeSlotResponse>> getArtistSlots(
             @PathVariable Long lessonId,
-            @RequestParam LocalDateTime from,
-            @RequestParam LocalDateTime to,
+            @RequestParam  @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam  @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
             @AuthenticationPrincipal PrincipalUser principalUser
     ) {
         return lessonTimeSlotService.getArtistSlots(lessonId, from, to, principalUser);

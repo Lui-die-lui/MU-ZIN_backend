@@ -101,7 +101,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.DELETE,"/lessons/**").authenticated()
 
                 .requestMatchers("/auth/**", "/login", "/error", "/oauth2/**", "/login/oauth2/**",
-                    "/mail/verify", "/instruments/**", "/lessons/style-tags", "/instruments/**").permitAll();
+                    "/mail/verify", "/instruments/**", "/lessons/style-tags").permitAll();
 
 
             auth.anyRequest().authenticated();

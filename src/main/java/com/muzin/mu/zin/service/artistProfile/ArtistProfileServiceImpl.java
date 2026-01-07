@@ -154,7 +154,7 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
         // 세션 없다고 터짐
         // 응답은 방금 검증/조회한 instruments 로 만들기 (LAZY 컬렉션 접근 x)
         List<InstrumentResponse> instrumentResponses = instruments.stream()
-                .map(i -> new InstrumentResponse(i.getInstId(), i.getInstName()))
+                .map(i -> new InstrumentResponse(i.getInstId(), i.getInstName(), i.getCategory()))
                 .toList();
 
         ArtistProfileResponse resp = new ArtistProfileResponse(
@@ -209,7 +209,8 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
         List<InstrumentResponse> instruments = profile.getArtistInstruments().stream()
                 .map(ai -> new InstrumentResponse(
                         ai.getInstrument().getInstId(),
-                        ai.getInstrument().getInstName()
+                        ai.getInstrument().getInstName(),
+                        ai.getInstrument().getCategory()
                 ))
                 .toList();
 

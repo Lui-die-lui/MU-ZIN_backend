@@ -116,7 +116,8 @@ public class InstrumentService {
     private InstrumentResponse toResponse(Instrument instrument) {
         return new InstrumentResponse(
                 instrument.getInstId(),
-                instrument.getInstName()
+                instrument.getInstName(),
+                instrument.getCategory()
         );
     }
 }
