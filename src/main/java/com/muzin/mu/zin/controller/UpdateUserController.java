@@ -2,6 +2,7 @@ package com.muzin.mu.zin.controller;
 
 import com.muzin.mu.zin.dto.ApiRespDto;
 import com.muzin.mu.zin.dto.auth.UpdateProfileImageRequest;
+import com.muzin.mu.zin.dto.auth.UpdateUsernameRequest;
 import com.muzin.mu.zin.security.model.PrincipalUser;
 import com.muzin.mu.zin.service.lesson.UpdateUserService;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,17 @@ public class UpdateUserController {
 
     private final UpdateUserService updateUserService;
 
+    // 유저명 변경
+    @PatchMapping("/username")
+    public ResponseEntity<ApiRespDto<?>> updateUsername(
+            @AuthenticationPrincipal PrincipalUser principalUser,
+            @RequestBody UpdateUsernameRequest req
+    ) {
+        updateUserService.updateUsername(principalUser.getUserId(), req.username());
+        return ResponseEntity.ok(new ApiRespDto<>("success", "이름이 수정되었습니다.", null));
+    }
+
+    // 프로필 이미지 변경
     @PatchMapping("/profile-image")
     public ResponseEntity<ApiRespDto<?>> updateProfileImage(
             @AuthenticationPrincipal PrincipalUser principalUser,
