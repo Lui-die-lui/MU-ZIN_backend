@@ -1,6 +1,7 @@
 package com.muzin.mu.zin.controller;
 
 import com.muzin.mu.zin.dto.ApiRespDto;
+import com.muzin.mu.zin.dto.auth.PrincipalDto;
 import com.muzin.mu.zin.dto.auth.SigninRequest;
 import com.muzin.mu.zin.dto.auth.SignupRequest;
 import com.muzin.mu.zin.security.model.PrincipalUser;
@@ -41,14 +42,19 @@ public class AuthController {
 //        ApiRespDto<?> apiRespDto = new ApiRespDto<>("success","", principalUser);
 //        return ResponseEntity.ok(apiRespDto);
 //    }
-    public ResponseEntity<?> getPrincipal(@AuthenticationPrincipal PrincipalUser principalUser) {
-        if (principalUser == null) {
-            ApiRespDto<?> fail = new ApiRespDto<>("failed", "인증되지 않은 사용자입니다.",null);
-            return ResponseEntity.status(401).body(fail);
-        }
-
-        ApiRespDto<?> apiRespDto = new ApiRespDto<>("success", "", principalUser);
-        return ResponseEntity.ok(apiRespDto);
+//    public ResponseEntity<?> getPrincipal(@AuthenticationPrincipal PrincipalUser principalUser) {
+//        if (principalUser == null) {
+//            ApiRespDto<?> fail = new ApiRespDto<>("failed", "인증되지 않은 사용자입니다.",null);
+//            return ResponseEntity.status(401).body(fail);
+//        }
+//
+//        ApiRespDto<?> apiRespDto = new ApiRespDto<>("success", "", principalUser);
+//        return ResponseEntity.ok(apiRespDto);
+//    }
+    public ResponseEntity<ApiRespDto<PrincipalDto>> principal( @AuthenticationPrincipal PrincipalUser principal) {
+        return ResponseEntity.ok(authService.getPrincipalDto(principal));
     }
+
+
 
 }
