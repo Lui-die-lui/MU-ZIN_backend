@@ -1,6 +1,7 @@
 package com.muzin.mu.zin.controller;
 
 import com.muzin.mu.zin.dto.ApiRespDto;
+import com.muzin.mu.zin.dto.auth.PasswordChangeRequest;
 import com.muzin.mu.zin.dto.auth.UpdateProfileImageRequest;
 import com.muzin.mu.zin.dto.auth.UpdateUsernameRequest;
 import com.muzin.mu.zin.security.model.PrincipalUser;
@@ -38,6 +39,15 @@ public class UpdateUserController {
             ) {
         updateUserService.updateProfileImage(principalUser.getUserId(), req.profileImgUrl());
         return ResponseEntity.ok(new ApiRespDto<>("success", "프로필 이미지가 수정되었습니다.", null));
+    }
+
+    // 비밀번호 변경
+    @PatchMapping("/password")
+    public ApiRespDto<?> changePassword (
+            @AuthenticationPrincipal PrincipalUser principalUser,
+            @RequestBody PasswordChangeRequest req
+            ) {
+        return updateUserService.changePassword(principalUser, req);
     }
 
 }

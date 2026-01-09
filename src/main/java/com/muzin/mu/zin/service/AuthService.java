@@ -1,13 +1,16 @@
 package com.muzin.mu.zin.service;
 
 import com.muzin.mu.zin.dto.ApiRespDto;
+import com.muzin.mu.zin.dto.auth.PasswordChangeRequest;
 import com.muzin.mu.zin.dto.auth.PrincipalDto;
 import com.muzin.mu.zin.dto.auth.SigninRequest;
 import com.muzin.mu.zin.dto.auth.SignupRequest;
+import com.muzin.mu.zin.entity.OAuth2UserEntity;
 import com.muzin.mu.zin.entity.Role;
 import com.muzin.mu.zin.entity.User;
 import com.muzin.mu.zin.entity.UserRole;
 import com.muzin.mu.zin.exception.DuplicateEmailException;
+import com.muzin.mu.zin.repository.OAuth2UserRepository;
 import com.muzin.mu.zin.repository.RoleRepository;
 import com.muzin.mu.zin.repository.UserRepository;
 import com.muzin.mu.zin.security.jwt.JwtUtils;
@@ -24,6 +27,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class AuthService {
 
+    private final OAuth2UserRepository oAuth2UserRepository;
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
@@ -92,6 +96,15 @@ public class AuthService {
         User user = userRepository.findById(principal.getUserId())
                 .orElseThrow(() -> new IllegalArgumentException("해당 유저가 존재하지 않습니다."));
 
+        Optional<OAuth2UserEntity> oauth2Opt =
+                oAuth2UserRepository.findByUser_UserId(user.getUserId());
+
+        String oauth2Provider = oauth2Opt
+                .map(OAuth2UserEntity::getProvider)
+                .orElse(null);
+
+        boolean canChangePassword = oauth2Opt.isEmpty(); // 소셜 로그인 유저가 아닐 때 비번 변경 가능
+
         PrincipalDto dto = new PrincipalDto(
                 user.getUserId(),
                 user.getEmail(),
@@ -99,9 +112,13 @@ public class AuthService {
                 user.getProfileImgUrl(),
                 user.getEmailVerified(),
                 user.getArtistStatus(),
-                principal.getRoles()
+                principal.getRoles(),
+                canChangePassword,
+                oauth2Provider
         );
 
         return new ApiRespDto<>("success","", dto);
     }
+
+
 }

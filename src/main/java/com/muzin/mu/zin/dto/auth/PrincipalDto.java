@@ -11,6 +11,10 @@ public record PrincipalDto(
         String profileImgUrl,
         Boolean emailVerified,
         ArtistStatus artistStatus,
-        List<String> roles
+        List<String> roles,
+
+        // 비밀번호 변경
+        Boolean canChangePassword,
+        String oauth2Provider
 ) {
 }
