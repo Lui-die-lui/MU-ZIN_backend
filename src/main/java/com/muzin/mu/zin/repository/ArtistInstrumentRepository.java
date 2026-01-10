@@ -10,8 +10,8 @@ import java.util.List;
 
 public interface ArtistInstrumentRepository extends JpaRepository<ArtistInstrument, Long> {
 
-    // 악기 추가할 때 중복 추가 방지
-    boolean existsByArtistProfile_ArtistProfileIdAndInstrument_InstId(Long artistProfileId, Long instId);
+    // 악기 하나라도 추가 했는지 존재 검증
+    boolean existsByArtistProfile_ArtistProfileId(Long artistProfileId);
 
     // 해당 아티스트가 가능한 악기 목록 or 수정 화면에서 체크된 악기들 미리 표시할 때
     List<ArtistInstrument> findAllByArtistProfile_ArtistProfileId(Long artistProfileId);
@@ -30,4 +30,6 @@ public interface ArtistInstrumentRepository extends JpaRepository<ArtistInstrume
             flushAutomatically = true)
     @Query("delete from ArtistInstrument ai where ai.artistProfile.artistProfileId = :profileId")
     void deleteAllByProfileId(@Param("profileId") Long profileId);
+
+
 }

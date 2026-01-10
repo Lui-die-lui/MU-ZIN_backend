@@ -4,11 +4,16 @@ import com.muzin.mu.zin.dto.ApiRespDto;
 import com.muzin.mu.zin.dto.artist.ArtistInstrumentAddRequest;
 import com.muzin.mu.zin.dto.artist.ArtistProfileResponse;
 import com.muzin.mu.zin.dto.artist.ArtistProfileUpsertRequest;
+import com.muzin.mu.zin.dto.artist.ArtistStyleSetRequest;
+import com.muzin.mu.zin.dto.lesson.LessonStyleTagResponse;
 import com.muzin.mu.zin.security.model.PrincipalUser;
 import com.muzin.mu.zin.service.artistProfile.ArtistProfileService;
+import com.muzin.mu.zin.service.artistProfile.ArtistStyleService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 
 @RestController
@@ -17,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 public class ArtistController {
 
     private final ArtistProfileService artistProfileService;
+    private final ArtistStyleService artistStyleService;
 
     // draft 저장 (NONE 상태에서만 가능)
     @PutMapping("/me/draft")
@@ -56,4 +62,22 @@ public class ArtistController {
             ) {
         return artistProfileService.setMyInstruments(req.instrumentIds(), principalUser);
     }
+
+    // 아티스트 성향(lessonStyle) 조회 및 교체(아티스트 본인 전용)
+    @GetMapping("/me/style-tags")
+    public ApiRespDto<List<LessonStyleTagResponse>> getMyStyleTags(
+            @AuthenticationPrincipal PrincipalUser principal
+    ) {
+        return artistStyleService.getMyStyleTags(principal);
+    }
+
+    @PutMapping("/me/style-tags")
+    public ApiRespDto<?> setMyStyleTags(
+            @AuthenticationPrincipal PrincipalUser principal,
+            @RequestBody ArtistStyleSetRequest req
+            ) {
+        return artistStyleService.setMyStyleTags(principal, req);
+    }
+
+
 }

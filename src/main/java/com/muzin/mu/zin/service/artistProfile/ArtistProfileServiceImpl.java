@@ -16,6 +16,7 @@ import com.muzin.mu.zin.repository.UserRepository;
 import com.muzin.mu.zin.security.model.PrincipalUser;
 import com.muzin.mu.zin.service.InstrumentService;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.boot.model.naming.IllegalIdentifierException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -88,6 +89,11 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
 
         ArtistProfile profile = getProfileOrThrow(user.getUserId());
         validateForSubmit(profile);
+
+        boolean hasInstrument = artistInstrumentRepository.existsByArtistProfile_ArtistProfileId(profile.getArtistProfileId());
+        if (!hasInstrument) {
+            throw new IllegalArgumentException("최소 1개 이상의 악기를 등록해야 제출할 수 있습니다.");
+        }
 
         // 제출 시 PENDING으로 전환시켜줌
         user.setArtistStatus(ArtistStatus.PENDING);

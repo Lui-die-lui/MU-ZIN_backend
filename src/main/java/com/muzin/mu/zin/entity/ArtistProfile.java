@@ -68,6 +68,11 @@ public class ArtistProfile extends BaseTimeEntity {
         this.majorName = majorName;
     }
 
+    // 아티스트 전환 제출 날짜
+    public void markSubmitted() {
+        this.submittedDt = LocalDateTime.now();
+    }
+
     // 악기 매핑 편의 매서드
     public void addInstrument (Instrument instrument) {
         this.artistInstruments.add(new ArtistInstrument(this, instrument));
