@@ -37,14 +37,27 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
 
     @Override
     public ApiRespDto<ArtistProfileResponse> getMyArtistProfile(PrincipalUser principalUser) {
-        ArtistProfile profile = getProfileOrThrow(principalUser.getUserId());
-        return new ApiRespDto<>("success", "조회 완료", toResponse(profile));
+//        ArtistProfile profile = getProfileOrThrow(principalUser.getUserId());
+//        // 신청 폼에는 프로필 row가 없을 가능성이 높은데 error 터짐
+//        return new ApiRespDto<>("success", "조회 완료", toResponse(profile));
 //        User user = getUserOrThrow(principalUser.getUserId());
 //
 //        ArtistProfile profile = artistProfileRepository.findByUser_UserId(user.getUserId())
 //                .orElseThrow(() -> new IllegalStateException("아티스트 프로필이 없습니다."));
 //
 //        return new ApiRespDto<>("success","조회 완료",toResponse(profile));
+        if (principalUser == null) {
+            return new ApiRespDto<>("failed", "로그인이 필요합니다.", null);
+        }
+
+        Optional<ArtistProfile> opt = artistProfileRepository.findByUser_UserId(principalUser.getUserId());
+
+        if (opt.isEmpty()) {
+            // 처음 진입: 아직 프로필 row가 없을 수 있음 (정상)
+            return new ApiRespDto<>("success", "아티스트 프로필이 아직 없습니다.", null);
+        }
+
+        return new ApiRespDto<>("success", "조회 완료", toResponse(opt.get()));
     }
 
     /*
