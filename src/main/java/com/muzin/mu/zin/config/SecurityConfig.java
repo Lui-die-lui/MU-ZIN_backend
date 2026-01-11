@@ -1,6 +1,6 @@
 package com.muzin.mu.zin.config;
 
-import com.muzin.mu.zin.security.filter.JwtAuthnticationFilter;
+import com.muzin.mu.zin.security.filter.JwtAuthenticationFilter;
 import com.muzin.mu.zin.security.handler.OAuth2FailureHandler;
 import com.muzin.mu.zin.security.handler.OAuth2SuccessHandler;
 import com.muzin.mu.zin.service.OAuth2PrincipalUserService;
@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -20,11 +21,12 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration // 해당 클래스가 스프링 설정 파일인 점을 명시
+@EnableMethodSecurity
 //@RequiredArgsConstructor // Lombok이 final 필드 + NonNull 필드에 대해 생성자 자동 생성
 public class SecurityConfig {
 
     // 의존성 안정적으로 유지
-    private final JwtAuthnticationFilter jwtAuthnticationFilter;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 //    private final OAuth2PrincipalUserService oAuth2PrincipalUserService;
 //    private final OAuth2FailureHandler oAuth2FailureHandler;
 //    private final OAuth2SuccessHandler oAuth2SuccessHandler;
@@ -42,8 +44,8 @@ public class SecurityConfig {
     //    }
 
 //    // 생성자 주입
-    public SecurityConfig(JwtAuthnticationFilter jwtAuthnticationFilter) {
-        this.jwtAuthnticationFilter = jwtAuthnticationFilter;
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
 
     // CORS 설정 만드는 부분 - 어떤 프론트엔드에서 이 백엔드를 호출할 수 있나?
@@ -85,7 +87,7 @@ public class SecurityConfig {
         http.sessionManagement(session
                 -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
-        http.addFilterBefore(jwtAuthnticationFilter, UsernamePasswordAuthenticationFilter.class);
+        http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         http.authorizeHttpRequests(auth -> {auth
 

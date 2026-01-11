@@ -82,5 +82,20 @@ public class ArtistProfile extends BaseTimeEntity {
         this.artistInstruments.clear(); // orphanRemoval=true 면 DB join row도 삭제됨
     }
 
+    public void markReviewed() {
+        this.reviewedDt = LocalDateTime.now();
+    }
+
+    // 반려 사유 클리어 함수
+    public void clearRejectReason() {
+        this.rejectReasonTitle = null;
+        this.rejectedReason = null;
+    }
+
+    public void setRejectReason(String title, String reason) {
+        this.rejectReasonTitle = title;
+        this.rejectedReason = reason;
+    }
+
 
 }

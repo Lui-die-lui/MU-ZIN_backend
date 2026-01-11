@@ -4,10 +4,16 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 
 // 중복 응답용 DTO
-@Data
-@AllArgsConstructor
-public class ApiRespDto<T> {
-    private String status;
-    private String message;
-    private T data;
+public record ApiRespDto<T> (
+     String status,
+     String message,
+     T data
+) {
+    public static <T> ApiRespDto<T> ok(T data) {
+        return new ApiRespDto<>("ok", null, data);
+    }
+
+    public static <T> ApiRespDto<T> fail(String message) {
+        return new ApiRespDto<>("failed", message, null);
+    }
 }

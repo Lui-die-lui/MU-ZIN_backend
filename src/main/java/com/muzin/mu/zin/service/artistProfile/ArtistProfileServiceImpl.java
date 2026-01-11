@@ -108,6 +108,9 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
             throw new IllegalArgumentException("최소 1개 이상의 악기를 등록해야 제출할 수 있습니다.");
         }
 
+        profile.markSubmitted();
+        artistProfileRepository.save(profile);
+
         // 제출 시 PENDING으로 전환시켜줌
         user.setArtistStatus(ArtistStatus.PENDING);
         userRepository.save(user);

@@ -41,7 +41,7 @@ import java.util.Optional;
 @Slf4j
 @Component // 스프링 빈으로 등록해서 securityFilterChain 설정 시 끼워넣을 수 있게 함
 @RequiredArgsConstructor // final 필드들을 생성자로 자동 주입
-public class JwtAuthnticationFilter extends OncePerRequestFilter { // 요청마다 한 번만 실행되는 필터
+public class JwtAuthenticationFilter extends OncePerRequestFilter { // 요청마다 한 번만 실행되는 필터
 
     private final JwtUtils jwtUtils;
     private final UserRepository userRepository;
@@ -122,7 +122,8 @@ public class JwtAuthnticationFilter extends OncePerRequestFilter { // 요청마�
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                         principalUser, // principal
                         null, // credentials (보통 패스워드인데 이미 JWT 검증 끝나서 null)
-                        principalUser.getAuthorities() // 권한 리스트
+//                        principalUser.getAuthorities() // 권한 리스트
+                        authorities // 권한 리스트
                 );
 
                 // IP, 세션 ID 같은 요청 관련 부가 정보를 authentication에 심어줌

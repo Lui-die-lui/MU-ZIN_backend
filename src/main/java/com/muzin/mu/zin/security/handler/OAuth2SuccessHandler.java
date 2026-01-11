@@ -1,9 +1,13 @@
 package com.muzin.mu.zin.security.handler;
 
 import com.muzin.mu.zin.entity.OAuth2UserEntity;
+import com.muzin.mu.zin.entity.Role;
 import com.muzin.mu.zin.entity.User;
+import com.muzin.mu.zin.entity.UserRole;
 import com.muzin.mu.zin.repository.OAuth2UserRepository;
+import com.muzin.mu.zin.repository.RoleRepository;
 import com.muzin.mu.zin.repository.UserRepository;
+import com.muzin.mu.zin.repository.UserRoleRepository;
 import com.muzin.mu.zin.security.jwt.JwtUtils;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -33,6 +37,10 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
     private final OAuth2UserRepository oAuth2UserRepository;
     private final PasswordEncoder passwordEncoder;
 
+    // userRole 주입이 안되고있었음
+    private final UserRoleRepository userRoleRepository;
+    private final RoleRepository roleRepository;
+
     @Value("${oauth2.redirect.success-url}")
     private String successRedirectUrl;
 
@@ -61,7 +69,9 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         Optional<OAuth2UserEntity> linked = oAuth2UserRepository.findByProviderAndProviderUserId(provider, providerUserId);
 
         if (linked.isPresent()) {
-            redirectWithToken(request, response, linked.get().getUser());
+            User user = linked.get().getUser();
+            ensureUserRole(user);
+            redirectWithToken(request, response, user);
             return;
         }
 
@@ -80,6 +90,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
             if (oAuth2UserRepository.existsByUserAndProvider(user, provider)) {
                 // 이미 같은 provider로 연동되어 있으면 중복 저장하지 말고 로그인만
+                ensureUserRole(user);
                 redirectWithToken(request, response, user);
                 return;
             }
@@ -92,7 +103,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                             .build()
             );
 
-
+            ensureUserRole(user);
             redirectWithToken(request, response, user);
             return;
         }
@@ -105,6 +116,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                 .build();
 
         userRepository.save(newUser);
+        ensureUserRole(newUser);
 
         oAuth2UserRepository.save(
                 OAuth2UserEntity.builder()
@@ -115,6 +127,26 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         );
 
         redirectWithToken(request, response, newUser);
+    }
+
+    // 가입 시 userRole (USER)를 보장
+    private void ensureUserRole(User user) {
+
+        // 이미 role 있으면 스킵
+        if (userRoleRepository.existsByUser_UserId(user.getUserId())) {
+            return;
+        }
+
+        Role userRoleEntity = roleRepository.findByRoleName("ROLE_USER")
+                .orElseThrow(() -> new IllegalArgumentException("USER Role not found"));
+
+        // userRole을 붙여서 save 해줌
+        userRoleRepository.save(
+                UserRole.builder()
+                        .user(user)
+                        .role(userRoleEntity)
+                        .build()
+        );
     }
 
     // 성공 시 담아줄 토큰
