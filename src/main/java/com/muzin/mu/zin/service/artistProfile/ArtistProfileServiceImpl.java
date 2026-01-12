@@ -129,7 +129,7 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
         requireStatus(user, EnumSet.of(ArtistStatus.APPROVED));
 
         ArtistProfile profile = getProfileOrThrow(user.getUserId());
-        profile.updateProfile(req.bio(), req.career(), req.majorName()); // 전공을 수정 가능...? 조금 생각해봐야할듯
+        profile.updateProfile(req.bio(), req.career(), profile.getMajorName()); // 전공을 수정 가능x, 그냥 원래 프로필
 
         ArtistProfile saved = artistProfileRepository.save(profile);
         return new ApiRespDto<>("success", "프로필 수정 완료", toResponse(saved));
