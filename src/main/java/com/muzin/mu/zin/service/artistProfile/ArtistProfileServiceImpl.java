@@ -70,7 +70,7 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
     @Transactional
     public ApiRespDto<ArtistProfileResponse> saveDraftProfile(ArtistProfileUpsertRequest req, PrincipalUser principalUser) {
        User user = getUserOrThrow(principalUser.getUserId());
-       requireStatus(user, EnumSet.of(ArtistStatus.NONE));
+       requireStatus(user, EnumSet.of(ArtistStatus.NONE, ArtistStatus.REJECTED));
 
 
        ArtistProfile profile = artistProfileRepository.findByUser_UserId(user.getUserId())
@@ -98,7 +98,7 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
     @Transactional
     public ApiRespDto<?> submitArtistApplication(PrincipalUser principalUser) {
         User user = getUserOrThrow(principalUser.getUserId());
-        requireStatus(user, EnumSet.of(ArtistStatus.NONE));
+        requireStatus(user, EnumSet.of(ArtistStatus.NONE , ArtistStatus.REJECTED));
 
         ArtistProfile profile = getProfileOrThrow(user.getUserId());
         validateForSubmit(profile);
@@ -113,6 +113,7 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
 
         // 제출 시 PENDING으로 전환시켜줌
         user.setArtistStatus(ArtistStatus.PENDING);
+        profile.clearRejectReason(); // 재제출 시 이전 반려 사유 제거
         userRepository.save(user);
 
         return new ApiRespDto<>("success", "아티스트 전환 신청이 제출되었습니다.", null);
@@ -148,7 +149,7 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
 //        if (user.getArtistStatus() != ArtistStatus.NONE && user.getArtistStatus() != ArtistStatus.APPROVED) {
 //            return new ApiRespDto<>("failed","현재 상태에서는 악기 수정이 불가능 합니다.", null);
 //        }
-        requireStatus(user, EnumSet.of(ArtistStatus.NONE, ArtistStatus.APPROVED));
+        requireStatus(user, EnumSet.of(ArtistStatus.NONE, ArtistStatus.APPROVED, ArtistStatus.REJECTED));
 
         ArtistProfile profile = artistProfileRepository.findByUser_UserId(user.getUserId())
                 .orElseThrow(() -> new IllegalStateException("아티스트 프로필이 없습니다."));
