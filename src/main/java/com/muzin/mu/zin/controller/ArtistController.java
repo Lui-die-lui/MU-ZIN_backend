@@ -72,7 +72,7 @@ public class ArtistController {
     }
 
     @PutMapping("/me/style-tags")
-    public ApiRespDto<?> setMyStyleTags(
+    public ApiRespDto<List<LessonStyleTagResponse>> setMyStyleTags(
             @AuthenticationPrincipal PrincipalUser principal,
             @RequestBody ArtistStyleSetRequest req
             ) {
