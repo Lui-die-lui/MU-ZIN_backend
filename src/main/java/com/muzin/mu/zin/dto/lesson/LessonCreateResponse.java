@@ -9,7 +9,6 @@ public record LessonCreateResponse(
         Long lessonId,
         String title,
         LessonMode mode,
-        LessonStatus status,
-        List<LessonStyleTagResponse> styleTags
+        LessonStatus status
         ) {
 }

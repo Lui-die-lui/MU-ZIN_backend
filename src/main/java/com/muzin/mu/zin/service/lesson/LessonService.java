@@ -52,36 +52,8 @@ public class LessonService {
 
         Lesson saved = lessonRepository.save(lesson);
 
-        //  태그 비어있으면 빈 배열 / 아니면 중복 제거해서 반환
-        List<Long> tagIds = (req.styleTagIds() == null) ? List.of()
-                : req.styleTagIds().stream().distinct().toList();
-
-        // 스타일 태그를 담아줄 빈 배열
-        List<LessonStyleTagResponse> styleTags = List.of();
-
-        // 태그 아이디가 비어있지 않으면
-        if (!tagIds.isEmpty()) {
-            List<LessonStyleTag> tags = lessonStyleTagRepository.findAllById(tagIds);
-
-            List<LessonStyleMap> maps = tags.stream()
-                    .map(tag -> LessonStyleMap.builder()
-                            .lesson(saved)
-                            .lessonStyleTag(tag)
-                            .build())
-                    .toList();
-
-            lessonStyleMapRepository.saveAll(maps);
-
-            // 응답에 담아줄 태그 리스트 생성
-            styleTags = tags.stream()
-                    .map(t -> new LessonStyleTagResponse(t.getLessonStyleTagId(), t.getStyleName()))
-                    .toList();
-
-
-        }
-
         return new ApiRespDto<>("success", "레슨이 생성되었습니다.", new LessonCreateResponse(
-                saved.getLessonId(), saved.getTitle(), saved.getMode(), saved.getStatus(), styleTags));
+                saved.getLessonId(), saved.getTitle(), saved.getMode(), saved.getStatus()));
 
     }
 

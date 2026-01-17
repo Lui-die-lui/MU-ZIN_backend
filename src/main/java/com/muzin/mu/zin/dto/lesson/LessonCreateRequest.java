@@ -12,7 +12,6 @@ public record LessonCreateRequest(
         @NotNull Integer durationMin,
         Integer price,
         String description,
-        String requirementText,
-        List<Long> styleTagIds
+        String requirementText
         ) {
 }
