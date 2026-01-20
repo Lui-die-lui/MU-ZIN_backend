@@ -6,9 +6,12 @@ import com.muzin.mu.zin.dto.artist.ArtistSummaryResponse;
 import com.muzin.mu.zin.dto.lesson.*;
 import com.muzin.mu.zin.entity.ArtistProfile;
 import com.muzin.mu.zin.entity.User;
+import com.muzin.mu.zin.entity.instrument.Instrument;
 import com.muzin.mu.zin.entity.instrument.InstrumentCategory;
 import com.muzin.mu.zin.entity.lesson.*;
+import com.muzin.mu.zin.repository.ArtistInstrumentRepository;
 import com.muzin.mu.zin.repository.ArtistProfileRepository;
+import com.muzin.mu.zin.repository.InstrumentRepository;
 import com.muzin.mu.zin.repository.lesson.LessonRepository;
 import com.muzin.mu.zin.repository.lesson.LessonStyleMapRepository;
 import com.muzin.mu.zin.repository.lesson.LessonStyleTagRepository;
@@ -31,6 +34,8 @@ public class LessonService {
     private final LessonStyleMapRepository lessonStyleMapRepository;
     private final LessonStyleTagRepository lessonStyleTagRepository;
     private final ArtistProfileRepository artistProfileRepository;
+    private final ArtistInstrumentRepository artistInstrumentRepository;
+    private final InstrumentRepository instrumentRepository;
 
     // 새 레슨 만들기
     @Transactional
@@ -39,10 +44,20 @@ public class LessonService {
         ArtistProfile profile = artistProfileRepository.findByUser_UserId(principalUser.getUserId())
                 .orElseThrow(() -> new IllegalArgumentException("아티스트 프로필이 없습니다."));
 
+        // 내 악기인지 검증
+        boolean ok = artistInstrumentRepository
+                .existsByArtistProfile_ArtistProfileIdAndInstrument_InstId(
+                        profile.getArtistProfileId(), req.instrumentId()
+                );
+        if (!ok) throw new IllegalArgumentException("등록한 악기만 레슨에 설정 가능합니다.");
+
+        Instrument instrument = instrumentRepository.findById(req.instrumentId())
+                .orElseThrow(() -> new IllegalArgumentException("악기가 없습니다."));
 
         Lesson lesson = Lesson.builder()
                 .artistProfile(profile)
                 .title(req.title())
+                .instrument(instrument)
                 .mode(req.mode())
                 .durationMin(req.durationMin())
                 .price(req.price())

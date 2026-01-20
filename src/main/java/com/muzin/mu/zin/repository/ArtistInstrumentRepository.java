@@ -13,6 +13,9 @@ public interface ArtistInstrumentRepository extends JpaRepository<ArtistInstrume
     // 악기 하나라도 추가 했는지 존재 검증
     boolean existsByArtistProfile_ArtistProfileId(Long artistProfileId);
 
+    // 아티스트 프로필에 해당 악기가 존재 하는지
+    boolean existsByArtistProfile_ArtistProfileIdAndInstrument_InstId(Long artistProfileId, Long instId);
+
     // 해당 아티스트가 가능한 악기 목록 or 수정 화면에서 체크된 악기들 미리 표시할 때
     List<ArtistInstrument> findAllByArtistProfile_ArtistProfileId(Long artistProfileId);
 

@@ -12,6 +12,8 @@ public record LessonCreateRequest(
         @NotNull Integer durationMin,
         Integer price,
         String description,
-        String requirementText
+        String requirementText,
+        @NotNull Long instrumentId
         ) {
 }
+ 
