@@ -17,7 +17,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -91,14 +93,25 @@ public class LessonTimeSlotService {
 
         // 입력되는 진행 시간
         int duration = lesson.getDurationMin();
-        LocalDateTime now = LocalDateTime.now();
+        ZoneId zone = ZoneId.of("Asia/Seoul"); // 현재 시간으로 고정시킴
+        LocalDateTime now = LocalDateTime.now(zone);
 
         // 요청 내 중복 제거
-        List<LocalDateTime> unique = req.startDts().stream().distinct().toList();
+        List<LocalDateTime> unique = req.startDts()
+                .stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        List<LocalDateTime> invalid = unique.stream()
+                .filter(start -> !start.isAfter(now)) // now이하 (과거 + 현재) 금지
+                .toList();
+
+        if (!invalid.isEmpty()) {
+            throw new IllegalArgumentException("현재 및 과거 시간 슬롯은 생성 불가능합니다.");
+        }
 
         List<LessonTimeSlot> toSave = unique.stream()
-                // 과거 시간 방지
-                .filter(start -> !start.isBefore(now))
                 // DB 중복 방지
                 .filter(start -> !lessonTimeSlotRepository.existsByLesson_LessonIdAndStartDt(lessonId, start))
                 .map(start -> LessonTimeSlot.builder()
