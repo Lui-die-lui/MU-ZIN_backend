@@ -39,4 +39,7 @@ public interface LessonTimeSlotRepository extends JpaRepository<LessonTimeSlot, 
             """)
     Optional<LessonTimeSlot> findByIdForUpdate(@Param("timeSlotId") Long timeSlotId);
 
+    // 레슨 슬롯 총량
+    int countByLesson_LessonId(Long lessonId);
+
 }

@@ -9,6 +9,7 @@ import com.muzin.mu.zin.entity.lesson.Lesson;
 import com.muzin.mu.zin.entity.lesson.LessonRecurrenceRule;
 import com.muzin.mu.zin.entity.lesson.LessonTimeSlot;
 import com.muzin.mu.zin.entity.lesson.TimeSlotStatus;
+import com.muzin.mu.zin.policy.TimeSlotPolicy;
 import com.muzin.mu.zin.repository.ArtistProfileRepository;
 import com.muzin.mu.zin.repository.lesson.LessonRecurrenceRuleRepository;
 import com.muzin.mu.zin.repository.lesson.LessonRepository;
@@ -54,10 +55,12 @@ public class LessonRecurrenceService {
         // 기본값 / 검증
         boolean enabled = (req.enabled() == null) ? true : req.enabled();
 
-        // default 시간대
-        String timezone = (req.timezone() == null || req.timezone().isBlank())
-                ? TimeDefaults.DEFAULT_TZ
-                : req.timezone().trim();
+        // default 시간대(한국으로 고정)
+        String timezone = TimeDefaults.DEFAULT_TZ;
+        if (req.timezone() != null && !req.timezone().isBlank()
+            && !req.timezone().trim().equals(TimeDefaults.DEFAULT_TZ)) {
+            throw new IllegalArgumentException("해당 서비스는 한국 시간대만 지원합니다.");
+        }
 
         int mask = (req.daysOfWeekMask() == null)
                 ? RecurrenceDefaults.DEFAULT_DOW_MASK
@@ -84,7 +87,7 @@ public class LessonRecurrenceService {
 
         // 반복 최대 설정
         if (weeksAhead < 1 || weeksAhead > RecurrenceDefaults.MAX_WEEKS_AHEAD) {
-            throw new IllegalArgumentException("반복할 주간은 1 ~ 12 사이로 설정하세요.");
+            throw new IllegalArgumentException("반복할 주간은 1 ~ 13 사이로 설정하세요.");
         }
 
         if (mask <= 0) {
@@ -111,11 +114,7 @@ public class LessonRecurrenceService {
 
     private  void materializeSlots(Lesson lesson, LessonRecurrenceRule rule) {
 
-        ZoneId zone = ZoneId.of(
-                (rule.getTimezone() == null || rule.getTimezone().isBlank())
-                        ? TimeDefaults.DEFAULT_TZ
-                        : rule.getTimezone()
-        );
+        ZoneId zone = TimeDefaults.DEFAULT_ZONE;
 
         LocalDateTime now = LocalDateTime.now(zone);
 
@@ -125,6 +124,10 @@ public class LessonRecurrenceService {
         LocalDate startDate = LocalDate.now(zone);
         LocalDate targetUntil = startDate.plusWeeks(rule.getWeeksAhead());
 
+        // 90일 상한 캡핑
+        LocalDate maxUntil = startDate.plusDays(TimeSlotPolicy.MAX_DAYS_AHEAD);
+        if (targetUntil.isAfter(maxUntil)) targetUntil = maxUntil;
+
         LocalDate fromDate = (rule.getMaterializedUntil() == null)
                 ? startDate
                 : rule.getMaterializedUntil().plusDays(1);
@@ -132,6 +135,8 @@ public class LessonRecurrenceService {
         if (fromDate.isAfter(targetUntil)) return;
 
         List<LessonTimeSlot> toSave = new ArrayList<>();
+
+        LocalDateTime upperExclusive = TimeSlotPolicy.upperExclusive(now);
 
         // for + while 문으로 돌리기
         for (LocalDate d = fromDate; !d.isAfter(targetUntil); d = d.plusDays(1)) {
@@ -152,6 +157,8 @@ public class LessonRecurrenceService {
                     continue;
                 }
 
+                if (!startDt.isBefore(upperExclusive)) break;
+
                 boolean exists = lessonTimeSlotRepository.existsByLesson_LessonIdAndStartDt(lesson.getLessonId(), startDt);
                 if (!exists) {
                     toSave.add(LessonTimeSlot.builder()
@@ -167,12 +174,18 @@ public class LessonRecurrenceService {
             }
         }
 
-        if (!toSave.isEmpty()) {
-            try {
-                lessonTimeSlotRepository.saveAll(toSave);
-            } catch (DataIntegrityViolationException e) {
-                throw new IllegalArgumentException("슬롯 생성중 중복 시간이 포함되어있습니다.");
+        if (!toSave.isEmpty()) { // db 호출을 최소화 - 비어있지 않을때만 일어남
+            int maxPerLesson = 400;
+            int existingCount = lessonTimeSlotRepository.countByLesson_LessonId(lesson.getLessonId());
+
+            if (existingCount + toSave.size() > maxPerLesson) {
+                throw new IllegalArgumentException("레슨당 타임슬롯은 최대 " + maxPerLesson + "개까지 생성할 수 있습니다.");
             }
+                try {
+                    lessonTimeSlotRepository.saveAll(toSave);
+                } catch (DataIntegrityViolationException e) {
+                    throw new IllegalArgumentException("슬롯 생성중 중복 시간이 포함되어있습니다.");
+                }
         }
 
         rule.setMaterializedUntil(targetUntil);

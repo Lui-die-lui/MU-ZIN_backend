@@ -1,5 +1,6 @@
 package com.muzin.mu.zin.service.lesson;
 
+import com.muzin.mu.zin.common.TimeDefaults;
 import com.muzin.mu.zin.dto.ApiRespDto;
 import com.muzin.mu.zin.dto.lesson.TimeSlotCreateRequest;
 import com.muzin.mu.zin.dto.lesson.TimeSlotResponse;
@@ -7,6 +8,7 @@ import com.muzin.mu.zin.entity.ArtistProfile;
 import com.muzin.mu.zin.entity.lesson.Lesson;
 import com.muzin.mu.zin.entity.lesson.LessonTimeSlot;
 import com.muzin.mu.zin.entity.lesson.TimeSlotStatus;
+import com.muzin.mu.zin.policy.TimeSlotPolicy;
 import com.muzin.mu.zin.repository.ArtistProfileRepository;
 import com.muzin.mu.zin.repository.lesson.LessonRepository;
 import com.muzin.mu.zin.repository.lesson.LessonTimeSlotRepository;
@@ -93,22 +95,39 @@ public class LessonTimeSlotService {
 
         // 입력되는 진행 시간
         int duration = lesson.getDurationMin();
-        ZoneId zone = ZoneId.of("Asia/Seoul"); // 현재 시간으로 고정시킴
-        LocalDateTime now = LocalDateTime.now(zone);
+        LocalDateTime now = LocalDateTime.now(TimeDefaults.DEFAULT_ZONE);
 
-        // 요청 내 중복 제거
+        // 요청 내 중복 및 null 제거
         List<LocalDateTime> unique = req.startDts()
                 .stream()
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList();
 
-        List<LocalDateTime> invalid = unique.stream()
-                .filter(start -> !start.isAfter(now)) // now이하 (과거 + 현재) 금지
-                .toList();
+        // 과거/현재 + 오늘 기준 90일 상한 검증
+        // 기존 invalid 리스트 만들 필요 없이 policy로 통일
+        TimeSlotPolicy.validateStartDts(unique, now);
 
-        if (!invalid.isEmpty()) {
-            throw new IllegalArgumentException("현재 및 과거 시간 슬롯은 생성 불가능합니다.");
+//        List<LocalDateTime> invalid = unique.stream()
+//                .filter(start -> !start.isAfter(now)) // now이하 (과거 + 현재) 금지
+//                .toList();
+//
+//        if (!invalid.isEmpty()) {
+//            throw new IllegalArgumentException("현재 및 과거 시간 슬롯은 생성 불가능합니다.");
+//        }
+
+        // 레슨당 슬롯 총량 상한
+        int maxPerLesson = 400;
+        int existingCount = lessonTimeSlotRepository.countByLesson_LessonId(lessonId);
+
+        // 지금 요청이 모두 신규로 저장되는건 아니니,
+        // 실제 저장될 후보만 센다.
+        long willCreate = unique.stream()
+                .filter(start -> !lessonTimeSlotRepository.existsByLesson_LessonIdAndStartDt(lessonId, start))
+                .count();
+
+        if (existingCount + willCreate > maxPerLesson) {
+            throw new IllegalArgumentException("레슨당 타임슬롯은 최대 " + maxPerLesson + "개까지 생성할 수 있습니다.");
         }
 
         List<LessonTimeSlot> toSave = unique.stream()
