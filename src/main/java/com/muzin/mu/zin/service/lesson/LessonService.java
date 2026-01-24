@@ -1,7 +1,6 @@
 package com.muzin.mu.zin.service.lesson;
 
 import com.muzin.mu.zin.dto.ApiRespDto;
-import com.muzin.mu.zin.dto.artist.ArtistProfileResponse;
 import com.muzin.mu.zin.dto.artist.ArtistSummaryResponse;
 import com.muzin.mu.zin.dto.lesson.*;
 import com.muzin.mu.zin.entity.ArtistProfile;
@@ -12,9 +11,7 @@ import com.muzin.mu.zin.entity.lesson.*;
 import com.muzin.mu.zin.repository.ArtistInstrumentRepository;
 import com.muzin.mu.zin.repository.ArtistProfileRepository;
 import com.muzin.mu.zin.repository.InstrumentRepository;
-import com.muzin.mu.zin.repository.lesson.LessonRepository;
-import com.muzin.mu.zin.repository.lesson.LessonStyleMapRepository;
-import com.muzin.mu.zin.repository.lesson.LessonStyleTagRepository;
+import com.muzin.mu.zin.repository.lesson.*;
 import com.muzin.mu.zin.security.model.PrincipalUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -32,7 +29,7 @@ public class LessonService {
 
     private final LessonRepository lessonRepository;
     private final LessonStyleMapRepository lessonStyleMapRepository;
-    private final LessonStyleTagRepository lessonStyleTagRepository;
+    private final LessonTimeSlotRepository lessonTimeSlotRepository;
     private final ArtistProfileRepository artistProfileRepository;
     private final ArtistInstrumentRepository artistInstrumentRepository;
     private final InstrumentRepository instrumentRepository;
@@ -82,13 +79,50 @@ public class LessonService {
         Lesson lesson = lessonRepository.findByLessonIdAndArtistProfile_ArtistProfileId(lessonId, profile.getArtistProfileId())
                 .orElseThrow(() -> new IllegalArgumentException("레슨이 없거나 권한이 없습니다."));
 
+        if (lesson.isDeleted()) {
+            throw new IllegalArgumentException("삭제된 레슨을 수정할 수 없습니다.");
+        }
+
+        // 예약이 하나라도 있는지 체크(예약 되어있으면 수정 불가능하게 해야하는 부분이 있어서)
+        boolean hasBookedSlot = lessonTimeSlotRepository.existsByLesson_LessonIdAndStatus(
+                lessonId,
+                TimeSlotStatus.BOOKED);
+
+        if (hasBookedSlot) {
+            boolean tryingToChangeCore =
+                    req.title() != null ||
+                    req.mode() != null ||
+                    req.price() != null ||
+                    req.durationMin() != null ||
+                    req.instrumentId() != null;
+
+            if (tryingToChangeCore) {
+                throw new IllegalArgumentException("예약된 슬롯이 있는 레슨은 수정이 불가능합니다.");
+            }
+        }
+
+        // 악기 변경(예약 없을 때만 여기까지 옴)
+        if (req.instrumentId() != null ) {
+
+            boolean allowed = artistInstrumentRepository
+                    .existsByArtistProfile_ArtistProfileIdAndInstrument_InstId(profile.getArtistProfileId(), req.instrumentId());
+
+            if (!allowed) {
+                throw new IllegalArgumentException("내 프로필에 등록한 악기만 레슨 악기로 선택가능합니다.");
+            }
+
+            Instrument inst = instrumentRepository.findById(req.instrumentId())
+                    .orElseThrow(() -> new IllegalArgumentException("악기가 존재하지 않습니다."));
+
+            lesson.changeInstrument(inst);
+        }
+
         lesson.applyUpdate(req.title(), req.mode(), req.description(), req.requirementText(),req.price(), req.durationMin());
 
         // 일단 status도 같이 바꿔줌
         if (req.status() != null) {
             lesson.changeStatus(req.status());
         }
-
 
         // 스타일 태그도 같이 내려주기
         List<LessonStyleTagResponse> styleTags = loadStyleTags(lesson.getLessonId());

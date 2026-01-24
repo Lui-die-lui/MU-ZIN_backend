@@ -91,4 +91,10 @@ public class Lesson extends BaseTimeEntity {
     public void changeStatus(LessonStatus status) {
         if (status != null) this.status = status;
     }
+
+    // 레슨 악기 변경
+    public void changeInstrument(Instrument instrument) {
+        if (instrument == null) return;
+        this.instrument = instrument;
+    }
 }

@@ -1,5 +1,6 @@
 package com.muzin.mu.zin.repository.lesson;
 
+import com.muzin.mu.zin.entity.lesson.TimeSlotStatus;
 import com.muzin.mu.zin.entity.reservation.LessonReservation;
 import com.muzin.mu.zin.entity.reservation.ReservationStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -39,6 +40,8 @@ public interface LessonReservationRepository extends JpaRepository<LessonReserva
 
     // 특정 레슨의 예약 목록
     List<LessonReservation> findByLesson_LessonIdOrderByRequestedDtDesc(Long lessonId);
+
+
 
 
 

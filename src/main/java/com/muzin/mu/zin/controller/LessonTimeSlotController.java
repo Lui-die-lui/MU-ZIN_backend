@@ -28,7 +28,7 @@ public class LessonTimeSlotController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to
             ) {
-        return lessonTimeSlotService.getOpenSlot(lessonId, from, to);
+        return lessonTimeSlotService.getOpenSlots(lessonId, from, to);
     }
 
     // 아티스트용 레슨시간 슬롯 전체 조회

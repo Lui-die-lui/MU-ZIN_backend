@@ -33,7 +33,7 @@ public class LessonTimeSlotService {
 
     // 유저용 OPEN 슬롯 조회
     @Transactional(readOnly = true)
-    public ApiRespDto<List<TimeSlotResponse>> getOpenSlot(Long lessonId, LocalDateTime from, LocalDateTime to) {
+    public ApiRespDto<List<TimeSlotResponse>> getOpenSlots(Long lessonId, LocalDateTime from, LocalDateTime to) {
 
         Lesson lesson = lessonRepository.findById(lessonId)
                 .orElseThrow(() -> new IllegalArgumentException("레슨이 없습니다."));

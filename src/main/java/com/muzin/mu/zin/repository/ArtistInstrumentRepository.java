@@ -1,6 +1,7 @@
 package com.muzin.mu.zin.repository;
 
 import com.muzin.mu.zin.entity.ArtistInstrument;
+import com.muzin.mu.zin.entity.lesson.TimeSlotStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -33,6 +34,5 @@ public interface ArtistInstrumentRepository extends JpaRepository<ArtistInstrume
             flushAutomatically = true)
     @Query("delete from ArtistInstrument ai where ai.artistProfile.artistProfileId = :profileId")
     void deleteAllByProfileId(@Param("profileId") Long profileId);
-
 
 }

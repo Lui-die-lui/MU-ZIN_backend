@@ -10,6 +10,7 @@ public record LessonUpdateRequest(
         String requirementText,
         Integer price,
         Integer durationMin,
-        LessonStatus status
+        LessonStatus status,
+        Long instrumentId
 ) {
 }
