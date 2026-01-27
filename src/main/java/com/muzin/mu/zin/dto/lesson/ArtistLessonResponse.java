@@ -10,6 +10,7 @@ import java.util.List;
 public record ArtistLessonResponse(
         Long lessonId,
         String title,
+        Long instId,
         String description,
         String requirementText,
         Integer price,

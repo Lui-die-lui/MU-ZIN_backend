@@ -44,11 +44,11 @@ public class LessonService {
         // 내 악기인지 검증
         boolean ok = artistInstrumentRepository
                 .existsByArtistProfile_ArtistProfileIdAndInstrument_InstId(
-                        profile.getArtistProfileId(), req.instrumentId()
+                        profile.getArtistProfileId(), req.instId()
                 );
         if (!ok) throw new IllegalArgumentException("등록한 악기만 레슨에 설정 가능합니다.");
 
-        Instrument instrument = instrumentRepository.findById(req.instrumentId())
+        Instrument instrument = instrumentRepository.findById(req.instId())
                 .orElseThrow(() -> new IllegalArgumentException("악기가 없습니다."));
 
         Lesson lesson = Lesson.builder()
@@ -94,7 +94,7 @@ public class LessonService {
                     req.mode() != null ||
                     req.price() != null ||
                     req.durationMin() != null ||
-                    req.instrumentId() != null;
+                    req.instId() != null;
 
             if (tryingToChangeCore) {
                 throw new IllegalArgumentException("예약된 슬롯이 있는 레슨은 수정이 불가능합니다.");
@@ -102,16 +102,16 @@ public class LessonService {
         }
 
         // 악기 변경(예약 없을 때만 여기까지 옴)
-        if (req.instrumentId() != null ) {
+        if (req.instId() != null ) {
 
             boolean allowed = artistInstrumentRepository
-                    .existsByArtistProfile_ArtistProfileIdAndInstrument_InstId(profile.getArtistProfileId(), req.instrumentId());
+                    .existsByArtistProfile_ArtistProfileIdAndInstrument_InstId(profile.getArtistProfileId(), req.instId());
 
             if (!allowed) {
                 throw new IllegalArgumentException("내 프로필에 등록한 악기만 레슨 악기로 선택가능합니다.");
             }
 
-            Instrument inst = instrumentRepository.findById(req.instrumentId())
+            Instrument inst = instrumentRepository.findById(req.instId())
                     .orElseThrow(() -> new IllegalArgumentException("악기가 존재하지 않습니다."));
 
             lesson.changeInstrument(inst);
@@ -130,6 +130,7 @@ public class LessonService {
         ArtistLessonResponse resp = new ArtistLessonResponse(
                 lesson.getLessonId(),
                 lesson.getTitle(),
+                lesson.getInstrument().getInstId(),
                 lesson.getDescription(),
                 lesson.getRequirementText(),
                 lesson.getPrice(),
@@ -187,9 +188,11 @@ public class LessonService {
                     ))
                     .toList();
 
+
             return new ArtistLessonResponse(
                     l.getLessonId(),
                     l.getTitle(),
+                    l.getInstrument().getInstId(),
                     l.getDescription(),
                     l.getRequirementText(),
                     l.getPrice(),
@@ -232,9 +235,12 @@ public class LessonService {
 //                .toList();
         List<LessonStyleTagResponse> styleTags = loadStyleTags(lesson.getLessonId());
 
+        Long instId = lesson.getInstrument().getInstId();
+
         ArtistLessonResponse resp = new ArtistLessonResponse(
                 lesson.getLessonId(),
                 lesson.getTitle(),
+                instId,
                 lesson.getDescription(),
                 lesson.getRequirementText(),
                 lesson.getPrice(),
@@ -308,9 +314,12 @@ public class LessonService {
                 user.getProfileImgUrl()
         );
 
+        Long instId = lesson.getInstrument().getInstId();
+
         LessonDetailResponse resp = new LessonDetailResponse(
                 lesson.getLessonId(),
                 lesson.getTitle(),
+                instId,
                 lesson.getDescription(),
                 lesson.getRequirementText(),
                 lesson.getPrice(),

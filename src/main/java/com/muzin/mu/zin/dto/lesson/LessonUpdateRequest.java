@@ -11,6 +11,6 @@ public record LessonUpdateRequest(
         Integer price,
         Integer durationMin,
         LessonStatus status,
-        Long instrumentId
+        Long instId
 ) {
 }

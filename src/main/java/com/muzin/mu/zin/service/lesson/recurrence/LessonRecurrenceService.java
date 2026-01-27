@@ -36,12 +36,16 @@ public class LessonRecurrenceService {
 
     @Transactional(readOnly = true)
     public ApiRespDto<LessonRecurrenceResponse> getRule(Long lessonId, PrincipalUser principalUser) {
-        Lesson lesson = getMyLessonOrThrow(lessonId, principalUser);
+        getMyLessonOrThrow(lessonId, principalUser); // 소유권 및 존재 검증만
 
-        LessonRecurrenceRule rule = ruleRepository.findByLesson_LessonId(lessonId)
-                .orElseThrow(() -> new IllegalArgumentException("레슨이 존재하지 않습니다."));
+        // 반복 규칙이 존재하지 않을 경우 에러 x / 검증 정도만
+        LessonRecurrenceRule rule = ruleRepository.findByLesson_LessonId(lessonId).orElse(null);
 
-        return new ApiRespDto<>("success", "조회 완료", rule == null ? null : toResponse(rule, lessonId));
+        if (rule == null) {
+            return new ApiRespDto<>("success","RECURRENCE_NOT_SET",null);
+        }
+
+        return new ApiRespDto<>("success", "조회 완료", toResponse(rule, lessonId));
     }
 
     @Transactional
@@ -82,7 +86,7 @@ public class LessonRecurrenceService {
 
         int durationMin = lesson.getDurationMin();
         if (intervalMin < durationMin) { // 쉬는시간이 음수거나 수업 중 다음 수업이 시작되는 케이스 막아줌
-            throw new IllegalArgumentException("intervalMin운 수업시간 이상이어야합니다.");
+            throw new IllegalArgumentException("intervalMin은 수업시간 이상이어야합니다.");
         }
 
         // 반복 최대 설정

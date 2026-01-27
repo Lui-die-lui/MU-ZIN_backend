@@ -13,7 +13,7 @@ public record LessonCreateRequest(
         Integer price,
         String description,
         String requirementText,
-        @NotNull Long instrumentId
+        @NotNull Long instId
         ) {
 }
  
