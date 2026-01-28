@@ -6,6 +6,7 @@ import com.muzin.mu.zin.dto.lesson.TimeSlotCreateRequest;
 import com.muzin.mu.zin.dto.lesson.TimeSlotResponse;
 import com.muzin.mu.zin.entity.ArtistProfile;
 import com.muzin.mu.zin.entity.lesson.Lesson;
+import com.muzin.mu.zin.entity.lesson.LessonStatus;
 import com.muzin.mu.zin.entity.lesson.LessonTimeSlot;
 import com.muzin.mu.zin.entity.lesson.TimeSlotStatus;
 import com.muzin.mu.zin.policy.TimeSlotPolicy;
@@ -43,6 +44,10 @@ public class LessonTimeSlotService {
             throw new IllegalArgumentException("삭제된 레슨입니다.");
         }
 
+        // 비활성 레슨은 슬롯 조회/예약 흐름 차단
+        if (lesson.getStatus() != LessonStatus.ACTIVE) {
+            throw new IllegalArgumentException("비활성 레슨입니다.");
+        }
 
         List<LessonTimeSlot> slots = lessonTimeSlotRepository
                 .findAllByLesson_LessonIdAndStartDtBetweenOrderByStartDtAsc(lessonId, from, to);

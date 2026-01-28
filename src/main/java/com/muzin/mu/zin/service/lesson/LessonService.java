@@ -161,6 +161,15 @@ public class LessonService {
             return new ApiRespDto<>("success", "이미 삭제된 레슨입니다.", null);
         }
 
+        // 예약(BOOKED) 타임슬롯 있으면 삭제 금지(비활성은 가능함)
+        boolean hasBookedSlot = lessonTimeSlotRepository.existsByLesson_LessonIdAndStatus(
+                lessonId, TimeSlotStatus.BOOKED
+        );
+
+        if (hasBookedSlot) {
+            throw new IllegalArgumentException("예약된 시간이 있는 레슨은 삭제할 수 없습니다.");
+        }
+
         lesson.markDeleted(); // INACTIVE 상태로 바꿔줌
         return new ApiRespDto<>("success", "레슨이 삭제되었습니다.", null);
     }
