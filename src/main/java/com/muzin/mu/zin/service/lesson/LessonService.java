@@ -229,9 +229,10 @@ public class LessonService {
                 .orElseThrow(() -> new IllegalArgumentException("레슨이 없거나 권한이 없습니다."));
 
         // 혹시 모르니까 걸어놓기(화면에 보여주진 않을건데 어떻게든 접근 할 가능성 때문에)
-        if (lesson.isDeleted()) {
-            throw new IllegalArgumentException("삭제된 레슨입니다.");
-        }
+        // 이것때문에 레슨 삭제하고 리스트 화면으로 돌아왔을때 오류나서 코드 보류
+//        if (lesson.isDeleted()) {
+//            throw new IllegalArgumentException("삭제된 레슨입니다.");
+//        }
 
         // 이거 api를 따로 빼고 구현해서 계속 이래야함;
 //        List<LessonStyleTagResponse> styleTags = lessonStyleMapRepository
