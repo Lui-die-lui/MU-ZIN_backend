@@ -13,9 +13,11 @@ import com.muzin.mu.zin.service.lesson.LessonService;
 import com.muzin.mu.zin.service.lesson.LessonStyleService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -87,9 +89,17 @@ public class LessonController {
             @RequestParam(required = false) List<Long> styleTagIds,
             @RequestParam(required = false) InstrumentCategory instrumentCategory,
             @RequestParam(required = false) List<Long> instIds,
-            @RequestParam(defaultValue = "LATEST") LessonSort sort
+            @RequestParam(defaultValue = "LATEST") LessonSort sort,
+
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime from,
+
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime to
     ) {
-        return lessonService.searchLessons(keyword, mode, styleTagIds, instrumentCategory, instIds, sort);
+        return lessonService.searchLessons(keyword, mode, styleTagIds, instrumentCategory, instIds, sort, from, to);
     }
 
     // 레슨 단일 조회

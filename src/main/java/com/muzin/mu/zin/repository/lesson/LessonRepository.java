@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -45,6 +46,14 @@ public interface LessonRepository extends JpaRepository<Lesson, Long> {
       )
       and (:instIds is null or l.instrument.instId in :instIds)
       and (:instCategory is null or l.instrument.category = :instCategory)
+      
+     and exists (
+              select 1
+              from LessonTimeSlot ts
+              where ts.lesson = l
+                and ts.status = com.muzin.mu.zin.entity.lesson.TimeSlotStatus.OPEN
+                and ts.startDt between :fromDt and :toDt
+        )
 """)
     List<Lesson> searchPublicLessons(
             @Param("keyword") String keyword,
@@ -52,6 +61,8 @@ public interface LessonRepository extends JpaRepository<Lesson, Long> {
             @Param("styleTagIds") List<Long> styleTagIds,
             @Param("instCategory") InstrumentCategory instCategory,
             @Param("instIds") List<Long> instIds,
+            @Param("fromDt") LocalDateTime fromDt,
+            @Param("toDt") LocalDateTime toDt,
             Pageable pageable
             );
 

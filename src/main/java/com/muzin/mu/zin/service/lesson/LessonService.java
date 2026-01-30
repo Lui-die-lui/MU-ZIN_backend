@@ -1,5 +1,6 @@
 package com.muzin.mu.zin.service.lesson;
 
+import com.muzin.mu.zin.common.TimeDefaults;
 import com.muzin.mu.zin.dto.ApiRespDto;
 import com.muzin.mu.zin.dto.artist.ArtistSummaryResponse;
 import com.muzin.mu.zin.dto.lesson.*;
@@ -20,6 +21,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 
@@ -273,14 +275,25 @@ public class LessonService {
             List<Long> styleTagIds,
             InstrumentCategory instCategory,
             List<Long> instIds,
-            LessonSort sort) {
+            LessonSort sort,
+            LocalDateTime from,
+            LocalDateTime to
+            ) {
 
+        // 기본값 보정
+        LocalDateTime f = (from == null) ? TimeDefaults.nowKst() : from;
+        if (from != null) {
+            // 사용자가 오늘 이전/오늘 00:00을 줘도, 오늘이면 now로 끌어올림
+            LocalDateTime now = TimeDefaults.nowKst();
+            if (!f.isAfter(now)) f= now;
+        }
+        LocalDateTime t = (to == null) ? f.plusDays(90) : to;
         String k = (keyword == null || keyword.isBlank()) ? null : keyword.trim();
         List<Long> tags = (styleTagIds == null || styleTagIds.isEmpty()) ? null : styleTagIds;
         List<Long> inst = (instIds == null || instIds.isEmpty()) ? null : instIds;
         Pageable pageable = PageRequest.of(0, 200, toSort(sort));
 
-        List<Lesson> lessons = lessonRepository.searchPublicLessons(k, mode, tags, instCategory, inst, pageable);
+        List<Lesson> lessons = lessonRepository.searchPublicLessons(k, mode, tags, instCategory, inst, f, t, pageable);
 
         List<LessonSearchResponse> resp = lessons.stream()
                 .map(l -> new LessonSearchResponse(
