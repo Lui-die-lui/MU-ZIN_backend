@@ -5,6 +5,7 @@ import com.muzin.mu.zin.dto.lesson.LessonCreateRequest;
 import com.muzin.mu.zin.dto.lesson.LessonDetailResponse;
 import com.muzin.mu.zin.dto.lesson.LessonUpdateRequest;
 import com.muzin.mu.zin.dto.lesson.SetLessonStylesRequest;
+import com.muzin.mu.zin.entity.TimePart;
 import com.muzin.mu.zin.entity.instrument.InstrumentCategory;
 import com.muzin.mu.zin.entity.lesson.LessonMode;
 import com.muzin.mu.zin.entity.lesson.LessonSort;
@@ -97,9 +98,17 @@ public class LessonController {
 
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-            LocalDateTime to
+            LocalDateTime to,
+
+            @RequestParam(required = false) List<Integer> daysOfWeek,
+            @RequestParam(required = false) List<String> timeParts
+
     ) {
-        return lessonService.searchLessons(keyword, mode, styleTagIds, instrumentCategory, instIds, sort, from, to);
+        return lessonService.searchLessons(
+                keyword, mode, styleTagIds,
+                instrumentCategory, instIds,
+                sort, from, to,
+                daysOfWeek, timeParts);
     }
 
     // 레슨 단일 조회

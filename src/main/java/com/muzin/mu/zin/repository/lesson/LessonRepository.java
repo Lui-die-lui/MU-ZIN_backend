@@ -61,8 +61,25 @@ where l.deletedDt is null
             where ts.lesson = l
               and ts.status = com.muzin.mu.zin.entity.lesson.TimeSlotStatus.OPEN
               and ts.startDt between :fromDt and :toDt
+              
+            and (
+            :applyWeekday = false
+            or cast(function('date_part', 'isodow', ts.startDt) as integer) in :daysOfWeek
+            )
+            
+            and (
+            :applyTimeParts  = false
+            or (
+            case
+             when function('date_part', 'hour', ts.startDt) between 6 and 11 then 'MORNING'
+             when function('date_part', 'hour', ts.startDt) between 12 and 17 then 'AFTERNOON'
+             when function('date_part', 'hour', ts.startDt) between 18 and 23 then 'EVENING'
+             else 'DAWN'
+         end
+            ) in :timeParts
         )
-  )
+    )
+)
 """)
     List<Lesson> searchPublicLessons(
             @Param("keyword") String keyword,
@@ -81,6 +98,12 @@ where l.deletedDt is null
             @Param("fromDt") LocalDateTime fromDt,
             @Param("toDt") LocalDateTime toDt,
             @Param("applyTime") boolean applyTime,
+
+            @Param("daysOfWeek") List<Integer> daysOfWeek,
+            @Param("applyWeekday") boolean applyWeekday,
+
+            @Param("timeParts") List<String> timeParts,
+            @Param("applyTimeParts") boolean applyTimeParts,
 
             Pageable pageable
     );

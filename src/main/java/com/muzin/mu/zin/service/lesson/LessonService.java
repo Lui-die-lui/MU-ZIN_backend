@@ -5,6 +5,7 @@ import com.muzin.mu.zin.dto.ApiRespDto;
 import com.muzin.mu.zin.dto.artist.ArtistSummaryResponse;
 import com.muzin.mu.zin.dto.lesson.*;
 import com.muzin.mu.zin.entity.ArtistProfile;
+import com.muzin.mu.zin.entity.TimePart;
 import com.muzin.mu.zin.entity.User;
 import com.muzin.mu.zin.entity.instrument.Instrument;
 import com.muzin.mu.zin.entity.instrument.InstrumentCategory;
@@ -273,31 +274,48 @@ public class LessonService {
             String keyword,
             LessonMode mode,
             List<Long> styleTagIds,
+
             InstrumentCategory instCategory,
             List<Long> instIds,
             LessonSort sort,
+
             LocalDateTime from,
-            LocalDateTime to
+            LocalDateTime to,
+
+            List<Integer> daysOfWeek,
+            List<String> timeParts
             ) {
 
         // 기본값 보정
+
+        // 키워드 검색
         String k = (keyword == null || keyword.isBlank()) ? "" : keyword.trim();
         boolean applyKeyword = !k.isBlank();
 
-// List는 절대 null로 넘기지 말기
+
+        // 스타일 태그 - List는 절대 null로 넘기지 말기
         boolean applyTags = styleTagIds != null && !styleTagIds.isEmpty();
         List<Long> tags = applyTags ? styleTagIds : List.of(-1L);
 
+        // 악기
         boolean applyInst = instIds != null && !instIds.isEmpty();
         List<Long> inst = applyInst ? instIds : List.of(-1L);
 
-    // 시간 필터 정책 결정 포인트
-    // "아무 필터 없이 검색하면 전체 레슨(슬롯 없어도) 뜨게"가 목표면 applyTime=false로 둬야 함.
-        boolean applyTime = (from != null || to != null);
-
-    // (applyTime이 false여도 from/to는 그냥 안전한 값으로 채워서 보냄)
+        // (applyTime이 false여도 from/to는 그냥 안전한 값으로 채워서 보냄)
+        // 레슨 기간
         LocalDateTime f = (from == null) ? TimeDefaults.nowKst() : from;
         LocalDateTime t = (to == null) ? f.plusDays(90) : to;
+
+        // 요일
+        boolean applyWeekday = (daysOfWeek != null && !daysOfWeek.isEmpty());
+        List<Integer> dows = applyWeekday ? daysOfWeek : List.of(-1);
+
+        boolean applyTimeParts = (timeParts != null && !timeParts.isEmpty());
+        List<String> parts = applyTimeParts ? timeParts : List.of("__NONE__");
+
+        // 시간 필터 정책 결정 포인트
+        // "아무 필터 없이 검색하면 전체 레슨(슬롯 없어도) 뜨게"가 목표면 applyTime=false로 둬야 함.
+        boolean applyTime = (from != null || to != null) || applyWeekday || applyTimeParts;
 
         Pageable pageable = PageRequest.of(0, 200, toSort(sort));
 
@@ -308,6 +326,8 @@ public class LessonService {
                 instCategory,
                 inst, applyInst,
                 f, t, applyTime,
+                dows, applyWeekday,
+                parts, applyTimeParts,
                 pageable
         );
 
