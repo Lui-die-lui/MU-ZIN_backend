@@ -281,19 +281,35 @@ public class LessonService {
             ) {
 
         // 기본값 보정
+        String k = (keyword == null || keyword.isBlank()) ? "" : keyword.trim();
+        boolean applyKeyword = !k.isBlank();
+
+// List는 절대 null로 넘기지 말기
+        boolean applyTags = styleTagIds != null && !styleTagIds.isEmpty();
+        List<Long> tags = applyTags ? styleTagIds : List.of(-1L);
+
+        boolean applyInst = instIds != null && !instIds.isEmpty();
+        List<Long> inst = applyInst ? instIds : List.of(-1L);
+
+    // 시간 필터 정책 결정 포인트
+    // "아무 필터 없이 검색하면 전체 레슨(슬롯 없어도) 뜨게"가 목표면 applyTime=false로 둬야 함.
+        boolean applyTime = (from != null || to != null);
+
+    // (applyTime이 false여도 from/to는 그냥 안전한 값으로 채워서 보냄)
         LocalDateTime f = (from == null) ? TimeDefaults.nowKst() : from;
-        if (from != null) {
-            // 사용자가 오늘 이전/오늘 00:00을 줘도, 오늘이면 now로 끌어올림
-            LocalDateTime now = TimeDefaults.nowKst();
-            if (!f.isAfter(now)) f= now;
-        }
         LocalDateTime t = (to == null) ? f.plusDays(90) : to;
-        String k = (keyword == null || keyword.isBlank()) ? null : keyword.trim();
-        List<Long> tags = (styleTagIds == null || styleTagIds.isEmpty()) ? null : styleTagIds;
-        List<Long> inst = (instIds == null || instIds.isEmpty()) ? null : instIds;
+
         Pageable pageable = PageRequest.of(0, 200, toSort(sort));
 
-        List<Lesson> lessons = lessonRepository.searchPublicLessons(k, mode, tags, instCategory, inst, f, t, pageable);
+        List<Lesson> lessons = lessonRepository.searchPublicLessons(
+                k, applyKeyword,
+                mode,
+                tags, applyTags,
+                instCategory,
+                inst, applyInst,
+                f, t, applyTime,
+                pageable
+        );
 
         List<LessonSearchResponse> resp = lessons.stream()
                 .map(l -> new LessonSearchResponse(
