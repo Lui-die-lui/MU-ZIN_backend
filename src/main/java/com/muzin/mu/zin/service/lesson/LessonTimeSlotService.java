@@ -5,6 +5,7 @@ import com.muzin.mu.zin.dto.ApiRespDto;
 import com.muzin.mu.zin.dto.lesson.TimeSlotCreateRequest;
 import com.muzin.mu.zin.dto.lesson.TimeSlotResponse;
 import com.muzin.mu.zin.entity.ArtistProfile;
+import com.muzin.mu.zin.entity.TimePart;
 import com.muzin.mu.zin.entity.lesson.Lesson;
 import com.muzin.mu.zin.entity.lesson.LessonStatus;
 import com.muzin.mu.zin.entity.lesson.LessonTimeSlot;
@@ -34,13 +35,18 @@ public class LessonTimeSlotService {
 
     // 유저용 OPEN 슬롯 조회
     @Transactional(readOnly = true)
-    public ApiRespDto<List<TimeSlotResponse>> getOpenSlots(Long lessonId, LocalDateTime from, LocalDateTime to) {
+    public ApiRespDto<List<TimeSlotResponse>> getOpenSlots(
+            Long lessonId,
+            LocalDateTime from, LocalDateTime to,
+            List<Integer> daysOfWeek,
+            List<TimePart> timeParts
+    ) {
 
         Lesson lesson = lessonRepository.findById(lessonId)
                 .orElseThrow(() -> new IllegalArgumentException("레슨이 없습니다."));
 
+        // 빈배열 말고 예외 던지는중
         if (lesson.isDeleted()) {
-//                return new ApiRespDto<>("success","",List.of());
             throw new IllegalArgumentException("삭제된 레슨입니다.");
         }
 
@@ -49,12 +55,27 @@ public class LessonTimeSlotService {
             throw new IllegalArgumentException("비활성 레슨입니다.");
         }
 
+        // 기본값 / 보정
+        LocalDateTime now = TimeDefaults.nowKst();
+        LocalDateTime f = (from == null) ? now : (from.isBefore(now) ? now : from);
+        LocalDateTime t = (to == null) ? f.plusDays(90) : to;
+
+        // from > to 방어
+        if (t.isBefore(f)) {
+            throw new IllegalArgumentException("to는 from 이후여야 합니다.");
+        }
+
         List<LessonTimeSlot> slots = lessonTimeSlotRepository
-                .findAllByLesson_LessonIdAndStartDtBetweenOrderByStartDtAsc(lessonId, from, to);
+                .findAllByLesson_LessonIdAndStartDtBetweenOrderByStartDtAsc(lessonId, f, t);
+
+        boolean applyDays = daysOfWeek != null && !daysOfWeek.isEmpty();
+        boolean applyParts = timeParts != null && !timeParts.isEmpty();
 
         List<TimeSlotResponse> resp = slots.stream()
                 .filter(s -> s.getStatus() == TimeSlotStatus.OPEN)
                 .filter(s-> !s.getStartDt().isBefore(LocalDateTime.now())) // 과거시간 조회 막음
+                .filter(s -> !applyDays || daysOfWeek.contains(toIsoDow(s.getStartDt())))
+                .filter(s -> !applyParts || timeParts.contains(toTimePart(s.getStartDt())))
                 .map(this::toResponse)
                 .toList();
 
@@ -238,5 +259,19 @@ public class LessonTimeSlotService {
                 slot.getEndDt(),
                 slot.getStatus()
         );
+    }
+
+    private int toIsoDow(LocalDateTime dt) {
+        // Java DayOfWeek: MONDAY=1 ... SUNDAY=7
+        return dt.getDayOfWeek().getValue();
+    }
+
+    private TimePart toTimePart(LocalDateTime dt) {
+        int h = dt.getHour();
+        // 너가 정한 기준대로 맞추면 됨
+        if (h >= 6 && h <= 11) return TimePart.MORNING;
+        if (h >= 12 && h <= 17) return TimePart.AFTERNOON;
+        if (h >= 18 && h <= 23) return TimePart.EVENING;
+        return TimePart.DAWN; // 0~5
     }
 }

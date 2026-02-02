@@ -1,5 +1,7 @@
 package com.muzin.mu.zin.dto.lesson;
 
+import com.muzin.mu.zin.dto.instrument.InstrumentResponse;
+import com.muzin.mu.zin.entity.instrument.InstrumentCategory;
 import com.muzin.mu.zin.entity.lesson.LessonMode;
 import com.muzin.mu.zin.entity.lesson.LessonStatus;
 
@@ -13,5 +15,10 @@ public record LessonSearchResponse(
         Integer durationMin,
         LessonMode mode,
         LessonStatus status
+
+        // 검색 시 카드에 악기 정보 추가
+//        Long instId,
+//        String instName,
+//        InstrumentCategory instCategory
 ) {
 }

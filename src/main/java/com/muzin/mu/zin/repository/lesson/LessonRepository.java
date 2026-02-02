@@ -1,5 +1,6 @@
 package com.muzin.mu.zin.repository.lesson;
 
+import com.muzin.mu.zin.dto.lesson.LessonSearchResponse;
 import com.muzin.mu.zin.entity.instrument.InstrumentCategory;
 import com.muzin.mu.zin.entity.lesson.Lesson;
 import com.muzin.mu.zin.entity.lesson.LessonMode;
@@ -28,6 +29,7 @@ public interface LessonRepository extends JpaRepository<Lesson, Long> {
     @Query("""
 select l
 from Lesson l
+join l.instrument i
 where l.deletedDt is null
   and l.status = com.muzin.mu.zin.entity.lesson.LessonStatus.ACTIVE
   and (:mode is null or l.mode = :mode)

@@ -3,6 +3,7 @@ package com.muzin.mu.zin.controller;
 import com.muzin.mu.zin.dto.ApiRespDto;
 import com.muzin.mu.zin.dto.lesson.TimeSlotCreateRequest;
 import com.muzin.mu.zin.dto.lesson.TimeSlotResponse;
+import com.muzin.mu.zin.entity.TimePart;
 import com.muzin.mu.zin.security.model.PrincipalUser;
 import com.muzin.mu.zin.service.lesson.LessonTimeSlotService;
 import lombok.RequiredArgsConstructor;
@@ -25,10 +26,14 @@ public class LessonTimeSlotController {
     @GetMapping("/{lessonId}/time-slots")
     public ApiRespDto<List<TimeSlotResponse>> getOpenSlots(
             @PathVariable Long lessonId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
+            @RequestParam(required = false) List<Integer> daysOfWeek,
+            @RequestParam(required = false) List<TimePart> timeParts
             ) {
-        return lessonTimeSlotService.getOpenSlots(lessonId, from, to);
+        return lessonTimeSlotService.getOpenSlots(lessonId, from, to, daysOfWeek, timeParts);
     }
 
     // 아티스트용 레슨시간 슬롯 전체 조회
