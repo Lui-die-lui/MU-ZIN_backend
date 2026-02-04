@@ -38,8 +38,9 @@ public class LessonReservation extends BaseTimeEntity {
     @JoinColumn(name = "lesson_id", nullable = false)
     private Lesson lesson;
 
-    // time_slot_id UK
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    // time_slot_id UK(원래 OneToOne - 타임슬롯 하나당 하나의 예약이 들어감. 새로운 행 추가 불가
+    // But 취소된 상황에서 같은 슬롯에 다른 예약자가 예약할때도 막힘 )
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "slot_id", nullable = false)
     private LessonTimeSlot timeSlot;
 

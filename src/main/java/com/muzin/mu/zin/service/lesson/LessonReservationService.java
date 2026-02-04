@@ -1,5 +1,6 @@
 package com.muzin.mu.zin.service.lesson;
 
+import com.muzin.mu.zin.common.TimeDefaults;
 import com.muzin.mu.zin.dto.ApiRespDto;
 import com.muzin.mu.zin.dto.lesson.TimeSlotResponse;
 import com.muzin.mu.zin.dto.reservation.ArtistCancelRequest;
@@ -123,21 +124,34 @@ public class LessonReservationService {
 
         LocalDateTime now = LocalDateTime.now(KST);
         LocalDateTime startDt = reservation.getTimeSlot().getStartDt();
-
         if (!startDt.isAfter(now)) {
             return new ApiRespDto<>("failed", "이미 진행중인 레슨은 취소할 수 없습니다.", null);
         }
 
-        // 24시간 이내면 자동취소 불가 -> 채팅으로 협의
-        if (now.isAfter(startDt.minusHours(24))) {
-            return new ApiRespDto<>("failed", "취소가 불가능한 상태입니다. 아티스트에게 채팅으로 문의하세요.",null);
+        // 대기중(REQUESTED)은 언제든 취소 가능하게
+        if (reservation.getStatus() == ReservationStatus.REQUESTED) {
+            reservation.cancel();
+            if (reservation.getTimeSlot().getStatus() == TimeSlotStatus.PENDING) {
+                reservation.getTimeSlot().open(); // PENDING -> OPEN
+            }
+            return new ApiRespDto<>("success", "예약 요청이 취소되었습니다.", null);
         }
-        // 예약이 취소 되면
-        reservation.cancel();
-        // 슬롯 다시 열어줌
-        reservation.getTimeSlot().open();
 
-        return new ApiRespDto<>("success","예약 취소가 완료되었습니다.", null);
+        // 확정(CONFIRMED)은 24시간 룰 적용
+        if (reservation.getStatus() == ReservationStatus.CONFIRMED) {
+            if (now.isAfter(startDt.minusHours(24))) {
+                return new ApiRespDto<>("failed", "취소가 불가능한 상태입니다. 아티스트에게 채팅으로 문의하세요.", null);
+            }
+
+            reservation.cancel();
+
+            // 유저 취소 시에는 다시 OPEN으로
+            reservation.getTimeSlot().reopenFromBooked(); // BOOKED -> OPEN
+
+            return new ApiRespDto<>("success", "예약 취소가 완료되었습니다.", null);
+        }
+
+        return new ApiRespDto<>("failed", "취소할 수 없는 상태입니다.", null);
     }
 
     // 아티스트 예약 조회 리스트
@@ -230,23 +244,18 @@ public class LessonReservationService {
             return new ApiRespDto<>("failed","진행이 완료된 레슨은 취소할 수 없습니다.", null);
         }
 
-        // 확정된 예약만 취소
-//        if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
-//            return new ApiRespDto<>("failed", "확정된 예약만 취소할 수 있습니다.",null);
-//        }
+        if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
+            return new ApiRespDto<>("failed", "확정된 예약만 취소할 수 있습니다.", null);
+        }
 
         reservation.cancel();
 
-        // 슬롯 처리 - 기본은 close , 선택으로 open 가능
+        // 확정 취소 - 기본은 닫기, 옵션으로 재오픈
         if (req != null && req.reopenSlot()) {
-            // 요청 바디가 있고reopenSlot이 true이면 슬롯 OPEN
-            reservation.getTimeSlot().open();
+            reservation.getTimeSlot().reopenFromBooked();   // BOOKED -> OPEN
         } else {
-            // 그 외의 모든 경우는 false
-            reservation.getTimeSlot().close();
+            reservation.getTimeSlot().closeFromBooked();    // BOOKED -> CLOSED
         }
-
-        // 아직 취소 사유 저장 안함
 
         return new ApiRespDto<>("success", "아티스트 사정으로 예약이 취소되었습니다.", null);
     }
