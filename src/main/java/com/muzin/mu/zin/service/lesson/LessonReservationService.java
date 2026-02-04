@@ -53,13 +53,15 @@ public class LessonReservationService {
 //        }
         // timeSlot 자체에 unique가 걸려있는데, 이렇게 되면 db자체에 행은 남아있고 unique가 걸려있는 상황이라 해당 시간에 재예약을 못함
         // 그래서 활성 상태만 체크해서 막아줘야함(요청 되거나 예약 완료된 것들)
-        List<ReservationStatus> active = List.of(ReservationStatus.REQUESTED, ReservationStatus.CONFIRMED);
-        if (reservationRepository.existsByTimeSlot_TimeSlotIdAndStatusIn(req.timeSlotId(), active)) {
-            return new ApiRespDto<>("failed", "이미 예약 요청된 시간입니다.", null);
-        }
+//        List<ReservationStatus> active = List.of(ReservationStatus.REQUESTED, ReservationStatus.CONFIRMED);
+//        if (reservationRepository.existsByTimeSlot_TimeSlotIdAndStatusIn(req.timeSlotId(), active)) {
+//            return new ApiRespDto<>("failed", "이미 예약 요청된 시간입니다.", null);
+//        }
 
         // 중복 예약 방지 - 예약 요청 들어오는 순간 해당 타임 슬롯을 Booked로 바꿔줌 - 도메인 메서드 만든거 사용
-        timeSlot.book();
+//        timeSlot.book();
+        // 요청하는 순간 booked -> pending
+        timeSlot.pending();
 
         Lesson lesson = timeSlot.getLesson();
         Integer price = (lesson.getPrice() == null ? 0 : lesson.getPrice()); // 예약 당시 가격
@@ -173,7 +175,13 @@ public class LessonReservationService {
             return new ApiRespDto<>("failed","요청된 예약만 확인 가능합니다.", null);
         }
 
+        LessonTimeSlot slot = reservation.getTimeSlot();
+        if (slot.getStatus() != TimeSlotStatus.PENDING) {
+            return new ApiRespDto<>("failed", "슬롯 상태가 올바르지 않습니다.(PENDING이 아님)", null);
+        }
+
         reservation.confirm();
+        slot.book(); // 슬롯을 예약상태로 바꿔줌
 
         // 타임 슬롯은 이미 BOOKED 상태 유지
         return new ApiRespDto<>("success","예약 확정이 완료되었습니다.",null);
@@ -192,8 +200,12 @@ public class LessonReservationService {
         }
 
         reservation.reject();
-        reservation.getTimeSlot().open();
+//        reservation.getTimeSlot().open();
 
+        // 요청 거절 시 PENDING -> OPEN
+        if (reservation.getTimeSlot().getStatus() == TimeSlotStatus.PENDING) {
+            reservation.getTimeSlot().open();
+        }
         return new ApiRespDto<>("success","예약 거절 완료",null);
     }
 
@@ -219,9 +231,9 @@ public class LessonReservationService {
         }
 
         // 확정된 예약만 취소
-        if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
-            return new ApiRespDto<>("failed", "확정된 예약만 취소할 수 있습니다.",null);
-        }
+//        if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
+//            return new ApiRespDto<>("failed", "확정된 예약만 취소할 수 있습니다.",null);
+//        }
 
         reservation.cancel();
 
