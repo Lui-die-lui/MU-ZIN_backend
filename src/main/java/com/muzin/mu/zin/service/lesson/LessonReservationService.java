@@ -262,6 +262,8 @@ public class LessonReservationService {
 
 
     // 공통 유틸 toResponse
+    // DTO 변환 과정에서 LAZY 연관을 매번 꺼내 쓰는 구조라서 N+1이 생김 (
+    // Repository쪽 EntityGraph 붙이는걸로 해결
     private ReservationResponse toResponse(LessonReservation reservation) {
         LessonTimeSlot timeSlot = reservation.getTimeSlot();
         Lesson lesson = reservation.getLesson();

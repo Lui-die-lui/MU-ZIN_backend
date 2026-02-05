@@ -3,6 +3,7 @@ package com.muzin.mu.zin.repository.lesson;
 import com.muzin.mu.zin.entity.lesson.TimeSlotStatus;
 import com.muzin.mu.zin.entity.reservation.LessonReservation;
 import com.muzin.mu.zin.entity.reservation.ReservationStatus;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,21 +13,22 @@ import java.util.Optional;
 
 public interface LessonReservationRepository extends JpaRepository<LessonReservation, Long> {
 
-//    boolean existsByTimeSlot_TimeSlotId(Long timeSlotId);
-    boolean existsByTimeSlot_TimeSlotIdAndStatusIn(Long timeSlotId, List<ReservationStatus> statuses);
-
     // 해당 유저가 예약한 레슨을 찾음
+    @EntityGraph(attributePaths = {"timeSlot", "lesson"})
     Optional<LessonReservation> findByReservationIdAndUser_UserId(Long reservationId, Long userId);
 
     // 레슨 요청 온 유저 목록을 최신 순 부터 정렬한 리스트
+    @EntityGraph(attributePaths = {"timeSlot", "lesson"})
     List<LessonReservation> findAllByUser_UserIdOrderByRequestedDtDesc(Long userId);
 
     // 아티스트 소유권 검증(예약 레슨이 해당 아티스트- 내 소속인지) / 근데 지금 principalUser 쪽에 artistId 없어서 일단 User로 검증
+    @EntityGraph(attributePaths = {"timeSlot", "lesson"})
     Optional<LessonReservation> findByReservationIdAndLesson_ArtistProfile_User_UserId(
             Long reservationId, Long userId
     );
 
     // 아티스트에게 요청온 레슨 목록
+    @EntityGraph(attributePaths = {"timeSlot", "lesson"})
     @Query("""
             select r from LessonReservation r
             where r.lesson.artistProfile.user.userId = :artistUserId
@@ -39,6 +41,7 @@ public interface LessonReservationRepository extends JpaRepository<LessonReserva
             );
 
     // 특정 레슨의 예약 목록
+    @EntityGraph(attributePaths = {"timeSlot", "lesson"})
     List<LessonReservation> findByLesson_LessonIdOrderByRequestedDtDesc(Long lessonId);
 
 

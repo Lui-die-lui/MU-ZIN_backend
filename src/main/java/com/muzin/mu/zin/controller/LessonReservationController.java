@@ -98,6 +98,7 @@ public class LessonReservationController {
     public ApiRespDto<?> cancelByArtist(
             @PathVariable Long reservationId,
             @RequestBody(required = false)ArtistCancelRequest req, // 바디 없이도 호출 가능하게 하려면 필요
+//            @RequestParam(defaultValue = "false") boolean reopenSlot, // 415 나면 이걸로 변경
             @AuthenticationPrincipal PrincipalUser principalUser
             ) {
         return reservationService.cancelByArtist(reservationId, req, principalUser);
