@@ -1,4 +1,4 @@
-package com.muzin.mu.zin.service;
+package com.muzin.mu.zin.service.notification;
 
 import com.muzin.mu.zin.dto.ApiRespDto;
 import com.muzin.mu.zin.dto.notification.NotificationResponse;
@@ -21,7 +21,7 @@ public class NotificationService {
     @Transactional(readOnly = true)
     public ApiRespDto<List<NotificationResponse>> getMyNotifications(PrincipalUser principalUser) {
         Long userId = principalUser.getUserId();
-        List<Notification> list = notificationRepository.findAllByUser_UserIdOrderByCreatedAtDesc(userId);
+        List<Notification> list = notificationRepository.findAllByUser_UserIdOrderByCreateDtDesc(userId);
 
         List<NotificationResponse> resp = list.stream().map(this::toResponse).toList();
         return new ApiRespDto<>("success", "", resp);
@@ -52,7 +52,7 @@ public class NotificationService {
     public ApiRespDto<?> markAllRead(PrincipalUser principalUser) {
         Long userId = principalUser.getUserId();
 
-        List<Notification> list = notificationRepository.findAllByUser_UserIdOrderByCreatedAtDesc(userId);
+        List<Notification> list = notificationRepository.findAllByUser_UserIdOrderByCreateDtDesc(userId);
         list.stream()
                 .filter(n -> !n.isRead()) // 안읽은것만 골라냄
                 .forEach(Notification::markRead); // 각각 읽음 처리 해줌
@@ -66,7 +66,8 @@ public class NotificationService {
                 n.getType(),
                 n.getTitle(),
                 n.getContent(),
-                n.getRefReservationId(),
+                n.getRefType(),
+                n.getRefId(),
                 n.isRead(),
                 n.getCreateDt()
         );

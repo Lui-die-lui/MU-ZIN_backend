@@ -9,7 +9,7 @@ import java.util.Optional;
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
 
     // 알림 리스트 최신순부터 정렬
-    List<Notification> findAllByUser_UserIdOrderByCreatedAtDesc(Long userId);
+    List<Notification> findAllByUser_UserIdOrderByCreateDtDesc(Long userId);
 
     // 안읽은 알림 몇개인지
     long countByUser_UserIdAndIsReadFalse(Long userId);

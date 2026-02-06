@@ -3,7 +3,7 @@ package com.muzin.mu.zin.controller;
 import com.muzin.mu.zin.dto.ApiRespDto;
 import com.muzin.mu.zin.dto.notification.NotificationResponse;
 import com.muzin.mu.zin.security.model.PrincipalUser;
-import com.muzin.mu.zin.service.NotificationService;
+import com.muzin.mu.zin.service.notification.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;

@@ -10,13 +10,17 @@ import com.muzin.mu.zin.entity.User;
 import com.muzin.mu.zin.entity.lesson.Lesson;
 import com.muzin.mu.zin.entity.lesson.LessonTimeSlot;
 import com.muzin.mu.zin.entity.lesson.TimeSlotStatus;
+import com.muzin.mu.zin.entity.notification.NotificationRefType;
+import com.muzin.mu.zin.entity.notification.NotificationType;
 import com.muzin.mu.zin.entity.reservation.LessonReservation;
 import com.muzin.mu.zin.entity.reservation.ReservationStatus;
+import com.muzin.mu.zin.event.NotificationEvent;
 import com.muzin.mu.zin.repository.UserRepository;
 import com.muzin.mu.zin.repository.lesson.LessonReservationRepository;
 import com.muzin.mu.zin.repository.lesson.LessonTimeSlotRepository;
 import com.muzin.mu.zin.security.model.PrincipalUser;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +36,7 @@ public class LessonReservationService {
     private final LessonTimeSlotRepository timeSlotRepository;
     private final UserRepository userRepository;
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+    private final ApplicationEventPublisher publisher; // 이벤트 리스너 사용 시 필요
 
     // 예약 생성
     @Transactional
@@ -78,6 +83,21 @@ public class LessonReservationService {
                 .build();
 
         LessonReservation saved = reservationRepository.save(reservation);
+
+        // artist userId
+        Long artistUserId = saved.getLesson().getArtistProfile().getUser().getUserId();
+
+        // 유저의 예약 요청 생성 -> 아티스트에게 알림
+        publisher.publishEvent(new NotificationEvent(
+                artistUserId,
+                NotificationType.RESERVATION_REQUESTED,
+                "새 예약 요청",
+                "예약 요청이 도착했습니다.",
+                NotificationRefType.RESERVATION,
+                saved.getReservationId()
+        ));
+
+
 
         return new ApiRespDto<>("success", "예약 요청 완료", toResponse(saved));
     }
@@ -196,6 +216,17 @@ public class LessonReservationService {
 
         reservation.confirm();
         slot.book(); // 슬롯을 예약상태로 바꿔줌
+
+        // 알림 보낼 요청 온 유저
+        Long userId = reservation.getUser().getUserId();
+        publisher.publishEvent(new NotificationEvent(
+                userId,
+                NotificationType.RESERVATION_CONFIRMED,
+                "예약 확정",
+                "예약이 확정되었습니다.",
+                NotificationRefType.RESERVATION,
+                reservation.getReservationId()
+        ));
 
         // 타임 슬롯은 이미 BOOKED 상태 유지
         return new ApiRespDto<>("success","예약 확정이 완료되었습니다.",null);
