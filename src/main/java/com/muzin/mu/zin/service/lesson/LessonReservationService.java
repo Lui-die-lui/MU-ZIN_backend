@@ -88,6 +88,7 @@ public class LessonReservationService {
         Long artistUserId = saved.getLesson().getArtistProfile().getUser().getUserId();
 
         // 유저의 예약 요청 생성 -> 아티스트에게 알림
+        // 나중에 해당 로직들은 팩토리로 빼보기
         publisher.publishEvent(new NotificationEvent(
                 artistUserId,
                 NotificationType.RESERVATION_REQUESTED,
@@ -96,8 +97,6 @@ public class LessonReservationService {
                 NotificationRefType.RESERVATION,
                 saved.getReservationId()
         ));
-
-
 
         return new ApiRespDto<>("success", "예약 요청 완료", toResponse(saved));
     }
@@ -154,6 +153,18 @@ public class LessonReservationService {
             if (reservation.getTimeSlot().getStatus() == TimeSlotStatus.PENDING) {
                 reservation.getTimeSlot().open(); // PENDING -> OPEN
             }
+
+            // 대기중일 때 취소
+            Long artistUserId = reservation.getLesson().getArtistProfile().getUser().getUserId();
+            publisher.publishEvent(new NotificationEvent(
+                    artistUserId,
+                    NotificationType.RESERVATION_CANCELED_BY_USER,
+                    "예약 취소",
+                    "유저가 예약을 취소했습니다.",
+                    NotificationRefType.RESERVATION,
+                    reservation.getReservationId()
+            ));
+
             return new ApiRespDto<>("success", "예약 요청이 취소되었습니다.", null);
         }
 
@@ -167,6 +178,17 @@ public class LessonReservationService {
 
             // 유저 취소 시에는 다시 OPEN으로
             reservation.getTimeSlot().reopenFromBooked(); // BOOKED -> OPEN
+
+            // 예약 확정 된 상태에서 취소
+            Long artistUserId = reservation.getLesson().getArtistProfile().getUser().getUserId();
+            publisher.publishEvent(new NotificationEvent(
+                    artistUserId,
+                    NotificationType.RESERVATION_CANCELED_BY_USER,
+                    "예약 취소",
+                    "유저가 예약을 취소했습니다.",
+                    NotificationRefType.RESERVATION,
+                    reservation.getReservationId()
+            ));
 
             return new ApiRespDto<>("success", "예약 취소가 완료되었습니다.", null);
         }
@@ -251,6 +273,17 @@ public class LessonReservationService {
         if (reservation.getTimeSlot().getStatus() == TimeSlotStatus.PENDING) {
             reservation.getTimeSlot().open();
         }
+
+        Long userId = reservation.getUser().getUserId();
+        publisher.publishEvent(new NotificationEvent(
+                userId,
+                NotificationType.RESERVATION_REJECTED,
+                "예약 거절",
+                "예약 요청이 거절되었습니다.",
+                NotificationRefType.RESERVATION,
+                reservation.getReservationId()
+        ));
+
         return new ApiRespDto<>("success","예약 거절 완료",null);
     }
 
@@ -287,6 +320,16 @@ public class LessonReservationService {
         } else {
             reservation.getTimeSlot().closeFromBooked();    // BOOKED -> CLOSED
         }
+
+        Long userId = reservation.getUser().getUserId();
+        publisher.publishEvent(new NotificationEvent(
+                userId,
+                NotificationType.RESERVATION_CANCELED_BY_ARTIST,
+                "예약 취소",
+                "아티스트 사정으로 예약이 취소되었습니다.",
+                NotificationRefType.RESERVATION,
+                reservation.getReservationId()
+        ));
 
         return new ApiRespDto<>("success", "아티스트 사정으로 예약이 취소되었습니다.", null);
     }
