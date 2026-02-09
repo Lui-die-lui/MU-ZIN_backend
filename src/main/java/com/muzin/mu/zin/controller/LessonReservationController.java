@@ -1,9 +1,7 @@
 package com.muzin.mu.zin.controller;
 
 import com.muzin.mu.zin.dto.ApiRespDto;
-import com.muzin.mu.zin.dto.reservation.ArtistCancelRequest;
-import com.muzin.mu.zin.dto.reservation.ReservationCreateRequest;
-import com.muzin.mu.zin.dto.reservation.ReservationResponse;
+import com.muzin.mu.zin.dto.reservation.*;
 import com.muzin.mu.zin.entity.reservation.ReservationStatus;
 import com.muzin.mu.zin.security.model.PrincipalUser;
 import com.muzin.mu.zin.service.lesson.LessonReservationService;
@@ -58,7 +56,7 @@ public class LessonReservationController {
 
     // 아티스트 예약 목록 리스트
     @GetMapping("/artist")
-    public ApiRespDto<List<ReservationResponse>> getArtistReservationList(
+    public ApiRespDto<List<ArtistReservationSummaryResponse>> getArtistReservationList(
             @RequestParam(required = false)ReservationStatus status,
             @AuthenticationPrincipal PrincipalUser principalUser
             ) {
@@ -68,7 +66,7 @@ public class LessonReservationController {
 
     // 아티스트 예약 단일 조회
     @GetMapping("/artist/{reservationId}")
-    public ApiRespDto<ReservationResponse> getArtistReservation(
+    public ApiRespDto<ArtistReservationDetailResponse> getArtistReservation(
             @PathVariable Long reservationId,
             @AuthenticationPrincipal PrincipalUser principalUser
     ) {

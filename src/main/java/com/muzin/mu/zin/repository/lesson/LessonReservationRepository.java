@@ -28,7 +28,7 @@ public interface LessonReservationRepository extends JpaRepository<LessonReserva
     );
 
     // 아티스트에게 요청온 레슨 목록
-    @EntityGraph(attributePaths = {"timeSlot", "lesson"})
+    @EntityGraph(attributePaths = {"timeSlot", "lesson", "user"})
     @Query("""
             select r from LessonReservation r
             where r.lesson.artistProfile.user.userId = :artistUserId

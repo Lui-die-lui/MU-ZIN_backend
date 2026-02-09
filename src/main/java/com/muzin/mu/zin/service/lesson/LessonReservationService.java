@@ -3,9 +3,7 @@ package com.muzin.mu.zin.service.lesson;
 import com.muzin.mu.zin.common.TimeDefaults;
 import com.muzin.mu.zin.dto.ApiRespDto;
 import com.muzin.mu.zin.dto.lesson.TimeSlotResponse;
-import com.muzin.mu.zin.dto.reservation.ArtistCancelRequest;
-import com.muzin.mu.zin.dto.reservation.ReservationCreateRequest;
-import com.muzin.mu.zin.dto.reservation.ReservationResponse;
+import com.muzin.mu.zin.dto.reservation.*;
 import com.muzin.mu.zin.entity.User;
 import com.muzin.mu.zin.entity.lesson.Lesson;
 import com.muzin.mu.zin.entity.lesson.LessonTimeSlot;
@@ -198,23 +196,23 @@ public class LessonReservationService {
 
     // 아티스트 예약 조회 리스트
     @Transactional(readOnly = true)
-    public ApiRespDto<List<ReservationResponse>> getArtistReservationList(ReservationStatus status, PrincipalUser principalUser) {
+    public ApiRespDto<List<ArtistReservationSummaryResponse>> getArtistReservationList(ReservationStatus status, PrincipalUser principalUser) {
         Long artistUserId = principalUser.getUserId();
         List<LessonReservation> list = reservationRepository.findArtistReservations(artistUserId, status);
 
-        return new ApiRespDto<>("success", "예약 리스트 조회 완료", list.stream().map(this::toResponse).toList());
+        return new ApiRespDto<>("success", "예약 리스트 조회 완료", list.stream().map(this::toArtistSummary).toList());
     }
 
     // 아티스트 예약 단일 조회
     @Transactional(readOnly = true)
-    public ApiRespDto<ReservationResponse> getArtistReservation(Long reservationId, PrincipalUser principalUser) {
+    public ApiRespDto<ArtistReservationDetailResponse> getArtistReservation(Long reservationId, PrincipalUser principalUser) {
         Long artistUserId = principalUser.getUserId();
 
         LessonReservation reservation = reservationRepository
                 .findByReservationIdAndLesson_ArtistProfile_User_UserId(reservationId, artistUserId)
                 .orElseThrow(() -> new IllegalArgumentException("잘못된 접근입니다. 다시 시도해주세요."));
 
-        return new ApiRespDto<>("success", "조회 완료", toResponse(reservation));
+        return new ApiRespDto<>("success", "조회 완료", toArtistDetail(reservation));
     }
 
 
@@ -359,6 +357,52 @@ public class LessonReservationService {
                         endDt,
                         timeSlot.getStatus() // enum 그대로 내려도 JSON 에서 OPEN 처럼 직렬화됨
                 )
+        );
+    }
+
+    // 아티스트 관리화면 list 전용 response
+    private ArtistReservationSummaryResponse toArtistSummary(LessonReservation r) {
+        LessonTimeSlot ts = r.getTimeSlot();
+        Lesson lesson = r.getLesson();
+        LocalDateTime endDt = ts.getStartDt().plusMinutes(lesson.getDurationMin());
+
+        String msg = r.getRequestedMsg();
+        boolean hasMessage = (msg != null && !msg.isBlank());
+
+        return new ArtistReservationSummaryResponse(
+                r.getReservationId(),
+                r.getStatus(),
+                r.getPriceAtBooking(),
+                r.getRequestedDt(),
+                r.getConfirmedDt(),
+                r.getCanceledDt(),
+                lesson.getLessonId(),
+                lesson.getTitle(),
+                new TimeSlotResponse(ts.getTimeSlotId(), ts.getStartDt(), endDt, ts.getStatus()),
+                r.getUser().getUserId(),
+                r.getUser().getUsername(),
+                hasMessage
+        );
+    }
+
+    private ArtistReservationDetailResponse toArtistDetail(LessonReservation r) {
+        LessonTimeSlot ts = r.getTimeSlot();
+        Lesson lesson = r.getLesson();
+        LocalDateTime endDt = ts.getStartDt().plusMinutes(lesson.getDurationMin());
+
+        return new ArtistReservationDetailResponse(
+                r.getReservationId(),
+                r.getStatus(),
+                r.getPriceAtBooking(),
+                r.getRequestedDt(),
+                r.getConfirmedDt(),
+                r.getCanceledDt(),
+                lesson.getLessonId(),
+                lesson.getTitle(),
+                new TimeSlotResponse(ts.getTimeSlotId(), ts.getStartDt(), endDt, ts.getStatus()),
+                r.getUser().getUserId(),
+                r.getUser().getUsername(),
+                r.getRequestedMsg()
         );
     }
 }
