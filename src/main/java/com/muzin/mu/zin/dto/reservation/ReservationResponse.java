@@ -13,6 +13,7 @@ public record ReservationResponse(
         LocalDateTime confirmedDt,
         LocalDateTime canceledDt,
         Long lessonId,
+        String lessonTitle,
         TimeSlotResponse timeSlot
 ) {
 }

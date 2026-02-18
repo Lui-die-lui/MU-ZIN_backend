@@ -351,6 +351,7 @@ public class LessonReservationService {
                 reservation.getConfirmedDt(),
                 reservation.getCanceledDt(),
                 lesson.getLessonId(),
+                lesson.getTitle(),
                 new TimeSlotResponse(
                         timeSlot.getTimeSlotId(),
                         timeSlot.getStartDt(),
