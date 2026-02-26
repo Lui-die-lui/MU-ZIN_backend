@@ -5,7 +5,6 @@ import com.muzin.mu.zin.dto.lesson.LessonCreateRequest;
 import com.muzin.mu.zin.dto.lesson.LessonDetailResponse;
 import com.muzin.mu.zin.dto.lesson.LessonUpdateRequest;
 import com.muzin.mu.zin.dto.lesson.SetLessonStylesRequest;
-import com.muzin.mu.zin.entity.TimePart;
 import com.muzin.mu.zin.entity.instrument.InstrumentCategory;
 import com.muzin.mu.zin.entity.lesson.LessonMode;
 import com.muzin.mu.zin.entity.lesson.LessonSort;

@@ -391,6 +391,9 @@ public class LessonReservationService {
         Lesson lesson = r.getLesson();
         LocalDateTime endDt = ts.getStartDt().plusMinutes(lesson.getDurationMin());
 
+        User requesterUser = r.getUser();
+        User artistUser = lesson.getArtistProfile().getUser();
+
         return new ArtistReservationDetailResponse(
                 r.getReservationId(),
                 r.getStatus(),
@@ -401,8 +404,13 @@ public class LessonReservationService {
                 lesson.getLessonId(),
                 lesson.getTitle(),
                 new TimeSlotResponse(ts.getTimeSlotId(), ts.getStartDt(), endDt, ts.getStatus()),
-                r.getUser().getUserId(),
-                r.getUser().getUsername(),
+
+                artistUser.getUserId(),
+                artistUser.getUsername(),
+
+                requesterUser.getUserId(),
+                requesterUser.getUsername(),
+
                 r.getRequestedMsg()
         );
     }

@@ -15,8 +15,10 @@ public record ArtistReservationDetailResponse(
         Long lessonId,
         String lessonTitle,
         TimeSlotResponse timeSlot,
+        Long artistUserId,
+        String artistDisplayName,
         Long requesterUserId,
         String requesterUsername,
-        String content             // 상세에서만
+        String requestMsg             // 상세에서만
 ) {
 }
