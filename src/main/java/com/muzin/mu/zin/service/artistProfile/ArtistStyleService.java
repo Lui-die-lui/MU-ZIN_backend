@@ -6,7 +6,7 @@ import com.muzin.mu.zin.dto.lesson.LessonStyleTagResponse;
 import com.muzin.mu.zin.entity.ArtistProfile;
 import com.muzin.mu.zin.entity.artist.ArtistStyleMap;
 import com.muzin.mu.zin.entity.lesson.LessonStyleTag;
-import com.muzin.mu.zin.repository.ArtistProfileRepository;
+import com.muzin.mu.zin.repository.artist.ArtistProfileRepository;
 import com.muzin.mu.zin.repository.artist.ArtistStyleMapRepository;
 import com.muzin.mu.zin.repository.lesson.LessonStyleTagRepository;
 import com.muzin.mu.zin.security.model.PrincipalUser;

@@ -10,13 +10,11 @@ import com.muzin.mu.zin.entity.ArtistStatus;
 import com.muzin.mu.zin.entity.User;
 import com.muzin.mu.zin.entity.instrument.Instrument;
 import com.muzin.mu.zin.repository.ArtistInstrumentRepository;
-import com.muzin.mu.zin.repository.ArtistProfileRepository;
-import com.muzin.mu.zin.repository.InstrumentRepository;
+import com.muzin.mu.zin.repository.artist.ArtistProfileRepository;
 import com.muzin.mu.zin.repository.UserRepository;
 import com.muzin.mu.zin.security.model.PrincipalUser;
 import com.muzin.mu.zin.service.InstrumentService;
 import lombok.RequiredArgsConstructor;
-import org.hibernate.boot.model.naming.IllegalIdentifierException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

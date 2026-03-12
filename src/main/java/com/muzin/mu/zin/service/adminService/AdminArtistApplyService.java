@@ -5,7 +5,7 @@ import com.muzin.mu.zin.dto.admin.AdminArtistApplyListItem;
 import com.muzin.mu.zin.dto.instrument.InstrumentResponse;
 import com.muzin.mu.zin.entity.ArtistProfile;
 import com.muzin.mu.zin.entity.ArtistStatus;
-import com.muzin.mu.zin.repository.ArtistProfileRepository;
+import com.muzin.mu.zin.repository.artist.ArtistProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

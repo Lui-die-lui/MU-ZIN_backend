@@ -11,7 +11,7 @@ import com.muzin.mu.zin.entity.lesson.LessonStatus;
 import com.muzin.mu.zin.entity.lesson.LessonTimeSlot;
 import com.muzin.mu.zin.entity.lesson.TimeSlotStatus;
 import com.muzin.mu.zin.policy.TimeSlotPolicy;
-import com.muzin.mu.zin.repository.ArtistProfileRepository;
+import com.muzin.mu.zin.repository.artist.ArtistProfileRepository;
 import com.muzin.mu.zin.repository.lesson.LessonRepository;
 import com.muzin.mu.zin.repository.lesson.LessonTimeSlotRepository;
 import com.muzin.mu.zin.security.model.PrincipalUser;
@@ -21,7 +21,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Objects;
 

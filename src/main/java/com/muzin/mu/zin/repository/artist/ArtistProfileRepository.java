@@ -1,4 +1,4 @@
-package com.muzin.mu.zin.repository;
+package com.muzin.mu.zin.repository.artist;
 
 import com.muzin.mu.zin.entity.ArtistProfile;
 import com.muzin.mu.zin.entity.ArtistStatus;
@@ -10,7 +10,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
 
-public interface ArtistProfileRepository extends JpaRepository<ArtistProfile, Long> {
+public interface ArtistProfileRepository extends JpaRepository<ArtistProfile, Long>, ArtistProfileRepositoryCustom {
 
     // 결과가 있을 수도 없을 수도 있는 user의 userId = userId 인것을 찾음
     // ArtistProfile.user.userId 로 조건을 건다

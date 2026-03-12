@@ -7,7 +7,7 @@ import com.muzin.mu.zin.entity.ArtistProfile;
 import com.muzin.mu.zin.entity.lesson.Lesson;
 import com.muzin.mu.zin.entity.lesson.LessonStyleMap;
 import com.muzin.mu.zin.entity.lesson.LessonStyleTag;
-import com.muzin.mu.zin.repository.ArtistProfileRepository;
+import com.muzin.mu.zin.repository.artist.ArtistProfileRepository;
 import com.muzin.mu.zin.repository.lesson.LessonRepository;
 import com.muzin.mu.zin.repository.lesson.LessonStyleMapRepository;
 import com.muzin.mu.zin.repository.lesson.LessonStyleTagRepository;

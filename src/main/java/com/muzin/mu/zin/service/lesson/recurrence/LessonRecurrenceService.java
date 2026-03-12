@@ -10,7 +10,7 @@ import com.muzin.mu.zin.entity.lesson.LessonRecurrenceRule;
 import com.muzin.mu.zin.entity.lesson.LessonTimeSlot;
 import com.muzin.mu.zin.entity.lesson.TimeSlotStatus;
 import com.muzin.mu.zin.policy.TimeSlotPolicy;
-import com.muzin.mu.zin.repository.ArtistProfileRepository;
+import com.muzin.mu.zin.repository.artist.ArtistProfileRepository;
 import com.muzin.mu.zin.repository.lesson.LessonRecurrenceRuleRepository;
 import com.muzin.mu.zin.repository.lesson.LessonRepository;
 import com.muzin.mu.zin.repository.lesson.LessonTimeSlotRepository;
