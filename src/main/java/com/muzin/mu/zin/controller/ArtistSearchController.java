@@ -1,14 +1,14 @@
 package com.muzin.mu.zin.controller;
 
+import com.muzin.mu.zin.dto.ApiRespDto;
+import com.muzin.mu.zin.dto.artist.ArtistProfileDetailResponse;
 import com.muzin.mu.zin.dto.artist.ArtistSearchRequest;
 import com.muzin.mu.zin.dto.artist.ArtistSearchResponse;
 import com.muzin.mu.zin.service.ArtistSearch.ArtistSearchService;
+import com.muzin.mu.zin.service.artistProfile.ArtistProfileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -18,6 +18,7 @@ import java.util.List;
 public class ArtistSearchController {
 
     private final ArtistSearchService artistSearchService;
+    private final ArtistProfileService artistProfileService;
 
     @GetMapping
     // /artists?keyword=플룻&instCategory=WOODWIND&instIds=1&instIds=2&styleTagIds=3
@@ -29,5 +30,12 @@ public class ArtistSearchController {
 //            @RequestParam(required = false) List<Long> styleTagIds
             ) {
         return ResponseEntity.ok(artistSearchService.searchArtists(req));
+    }
+
+    @GetMapping("/{artistProfileId}")
+    public ApiRespDto<ArtistProfileDetailResponse> getArtistProfileDetail(
+            @PathVariable Long artistProfileId
+    ) {
+        return artistProfileService.getArtistProfileDetail(artistProfileId);
     }
 }

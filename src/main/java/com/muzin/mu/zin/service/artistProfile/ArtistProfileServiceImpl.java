@@ -1,9 +1,11 @@
 package com.muzin.mu.zin.service.artistProfile;
 
 import com.muzin.mu.zin.dto.ApiRespDto;
+import com.muzin.mu.zin.dto.artist.ArtistProfileDetailResponse;
 import com.muzin.mu.zin.dto.artist.ArtistProfileResponse;
 import com.muzin.mu.zin.dto.artist.ArtistProfileUpsertRequest;
 import com.muzin.mu.zin.dto.instrument.InstrumentResponse;
+import com.muzin.mu.zin.dto.lesson.LessonStyleTagResponse;
 import com.muzin.mu.zin.entity.ArtistInstrument;
 import com.muzin.mu.zin.entity.ArtistProfile;
 import com.muzin.mu.zin.entity.ArtistStatus;
@@ -12,6 +14,7 @@ import com.muzin.mu.zin.entity.instrument.Instrument;
 import com.muzin.mu.zin.repository.ArtistInstrumentRepository;
 import com.muzin.mu.zin.repository.artist.ArtistProfileRepository;
 import com.muzin.mu.zin.repository.UserRepository;
+import com.muzin.mu.zin.repository.artist.ArtistStyleMapRepository;
 import com.muzin.mu.zin.security.model.PrincipalUser;
 import com.muzin.mu.zin.service.InstrumentService;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +34,7 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
     private final ArtistProfileRepository artistProfileRepository;
     private final ArtistInstrumentRepository artistInstrumentRepository;
     private final InstrumentService instrumentService;
+    private final ArtistStyleMapRepository artistStyleMapRepository;
 
 
     @Override
@@ -193,6 +197,29 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
         return new ApiRespDto<>("success", "악기 목록이 저장되었습니다.", resp);
     }
 
+    // 아티스트 검색 상세페이지 디테일
+    @Override
+    public ApiRespDto<ArtistProfileDetailResponse> getArtistProfileDetail(Long artistProfileId) {
+        ArtistProfile profile = artistProfileRepository.findById(artistProfileId)
+                .orElseThrow(() -> new IllegalArgumentException("아티스트 프로필을 찾을 수 없습니다."));
+
+        if (profile.getUser().getArtistStatus() != ArtistStatus.APPROVED) {
+            throw new IllegalStateException("승인된 아티스트만 조회 가능합니다.");
+        }
+
+        List<LessonStyleTagResponse> styleTags = artistStyleMapRepository
+                .findAllByArtistProfile_ArtistProfileId(profile.getArtistProfileId())
+                .stream()
+                .map(m -> new LessonStyleTagResponse(
+                        m.getLessonStyleTag().getLessonStyleTagId(),
+                        m.getLessonStyleTag().getStyleName()
+                ))
+                .toList();
+
+        return new ApiRespDto<>("success","아티스트 상세 조회 완료", toDetailResponse(profile, styleTags));
+    }
+
+
     // guard & helpers
 
     // 요청 보내는 user의 Status를 확인
@@ -246,6 +273,27 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
                 profile.getUser().getArtistStatus(),
                 instruments
 
+        );
+    }
+
+    private ArtistProfileDetailResponse toDetailResponse(
+            ArtistProfile profile,
+            List<LessonStyleTagResponse> styleTags
+    ) {
+        // 기존 아티스트 디테일 재사용
+        ArtistProfileResponse base = toResponse(profile);
+
+        return new ArtistProfileDetailResponse(
+                base.artistProfileId(),
+                base.userId(),
+                base.username(),
+                base.profileImgUrl(),
+                base.bio(),
+                base.career(),
+                base.majorName(),
+                base.status(),
+                base.instruments(),
+                styleTags
         );
     }
 

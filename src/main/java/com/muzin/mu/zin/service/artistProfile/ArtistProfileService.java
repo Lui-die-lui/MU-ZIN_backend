@@ -1,6 +1,7 @@
 package com.muzin.mu.zin.service.artistProfile;
 
 import com.muzin.mu.zin.dto.ApiRespDto;
+import com.muzin.mu.zin.dto.artist.ArtistProfileDetailResponse;
 import com.muzin.mu.zin.dto.artist.ArtistProfileResponse;
 import com.muzin.mu.zin.dto.artist.ArtistProfileUpsertRequest;
 import com.muzin.mu.zin.security.model.PrincipalUser;
@@ -26,5 +27,8 @@ public interface ArtistProfileService {
 
     // 아티스트 악기 정보 등록 및 변경
     ApiRespDto<ArtistProfileResponse> setMyInstruments(List<Long> instrumentIds, PrincipalUser principalUser);
+
+    // 아티스트 검색 시 상세 페이지에서 보여줄 detail 목록
+    ApiRespDto<ArtistProfileDetailResponse> getArtistProfileDetail(Long artistProfileId);
 
 }
