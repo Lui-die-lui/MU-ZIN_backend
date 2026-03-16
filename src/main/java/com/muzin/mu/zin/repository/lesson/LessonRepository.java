@@ -1,5 +1,6 @@
 package com.muzin.mu.zin.repository.lesson;
 
+import com.muzin.mu.zin.dto.lesson.LessonCardRow;
 import com.muzin.mu.zin.dto.lesson.LessonSearchResponse;
 import com.muzin.mu.zin.entity.instrument.InstrumentCategory;
 import com.muzin.mu.zin.entity.lesson.Lesson;
@@ -119,6 +120,42 @@ where l.deletedDt is null
             """)
     Optional<Lesson> findPublicDetailById(Long lessonId);
 
+    // 레슨 카드 목록용
+    @Query("""
+    select new com.muzin.mu.zin.dto.lesson.LessonCardRow(
+        l.lessonId,
+        l.title,
+        l.price,
+        l.durationMin,
+        l.mode,
+        i.instId,
+        i.instName
+    )
+    from Lesson l
+    join l.instrument i
+    where l.artistProfile.artistProfileId = :artistProfileId
+      and l.deletedDt is null
+      and l.status = com.muzin.mu.zin.entity.lesson.LessonStatus.ACTIVE
+    order by l.lessonId desc
+""")
+    List<LessonCardRow> findArtistLessonCardRows(@Param("artistProfileId") Long artistProfileId);
 
+
+    // 선택 레슨 상세용
+    @Query("""
+    select l
+    from Lesson l
+    join fetch l.artistProfile ap
+    join fetch ap.user u
+    join fetch l.instrument i
+    where l.lessonId = :lessonId
+      and ap.artistProfileId = :artistProfileId
+      and l.deletedDt is null
+      and l.status = com.muzin.mu.zin.entity.lesson.LessonStatus.ACTIVE
+""")
+    Optional<Lesson> findArtistLessonDetail(
+            @Param("artistProfileId") Long artistProfileId,
+            @Param("lessonId") Long lessonId
+    );
 }
 

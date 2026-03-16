@@ -14,6 +14,6 @@ public record ArtistLessonDetailResponse(
         Integer durationMin,
         LessonMode mode,
         LessonStatus status,
-        List<ArtistInstrumentSummary> instruments
+        ArtistInstrumentSummary instrument
 ) {
 }

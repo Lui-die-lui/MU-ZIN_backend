@@ -10,6 +10,6 @@ public record ArtistLessonCardResponse(
         LessonMode mode,
         Integer price,
         Integer durationMin,
-        List<ArtistInstrumentSummary> instruments
+        ArtistInstrumentSummary instrument
 ) {
 }

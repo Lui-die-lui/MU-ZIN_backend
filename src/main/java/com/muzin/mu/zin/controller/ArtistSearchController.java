@@ -1,9 +1,8 @@
 package com.muzin.mu.zin.controller;
 
 import com.muzin.mu.zin.dto.ApiRespDto;
-import com.muzin.mu.zin.dto.artist.ArtistProfileDetailResponse;
-import com.muzin.mu.zin.dto.artist.ArtistSearchRequest;
-import com.muzin.mu.zin.dto.artist.ArtistSearchResponse;
+import com.muzin.mu.zin.dto.artist.*;
+import com.muzin.mu.zin.service.ArtistSearch.ArtistLessonQueryService;
 import com.muzin.mu.zin.service.ArtistSearch.ArtistSearchService;
 import com.muzin.mu.zin.service.artistProfile.ArtistProfileService;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +18,7 @@ public class ArtistSearchController {
 
     private final ArtistSearchService artistSearchService;
     private final ArtistProfileService artistProfileService;
+    private final ArtistLessonQueryService artistLessonQueryService;
 
     @GetMapping
     // /artists?keyword=플룻&instCategory=WOODWIND&instIds=1&instIds=2&styleTagIds=3
@@ -37,5 +37,20 @@ public class ArtistSearchController {
             @PathVariable Long artistProfileId
     ) {
         return artistProfileService.getArtistProfileDetail(artistProfileId);
+    }
+
+    @GetMapping("/{artistProfileId}/lessons")
+    public ApiRespDto<List<ArtistLessonCardResponse>> getArtistLessonCards(
+            @PathVariable Long artistProfileId
+    ) {
+        return artistLessonQueryService.getArtistLessonCards(artistProfileId);
+    }
+
+    @GetMapping("/{artistProfileId}/lessons/{lessonId}")
+    public ApiRespDto<ArtistLessonDetailResponse> getArtistLessonDetail(
+            @PathVariable Long artistProfileId,
+            @PathVariable Long lessonId
+    ) {
+        return artistLessonQueryService.getArtistLessonDetail(artistProfileId, lessonId);
     }
 }
