@@ -53,6 +53,10 @@ public class LessonService {
         Instrument instrument = instrumentRepository.findById(req.instId())
                 .orElseThrow(() -> new IllegalArgumentException("악기가 없습니다."));
 
+        LessonClosingPolicy closingPolicy = req.closingPolicy() != null
+                        ? req.closingPolicy()
+                        : LessonClosingPolicy.KEEP_OPEN_FOR_REQUEST;
+
         Lesson lesson = Lesson.builder()
                 .artistProfile(profile)
                 .title(req.title())
@@ -62,12 +66,13 @@ public class LessonService {
                 .price(req.price())
                 .description(req.description())
                 .requirementText(req.requirementText())
+                .closingPolicy(closingPolicy)
                 .build();
 
         Lesson saved = lessonRepository.save(lesson);
 
         return new ApiRespDto<>("success", "레슨이 생성되었습니다.", new LessonCreateResponse(
-                saved.getLessonId(), saved.getTitle(), saved.getMode(), saved.getStatus()));
+                saved.getLessonId(), saved.getTitle(), saved.getMode(), saved.getStatus(), saved.getClosingPolicy()));
 
     }
 
@@ -119,7 +124,14 @@ public class LessonService {
             lesson.changeInstrument(inst);
         }
 
-        lesson.applyUpdate(req.title(), req.mode(), req.description(), req.requirementText(),req.price(), req.durationMin());
+        lesson.applyUpdate(
+                req.title(),
+                req.mode(),
+                req.description(),
+                req.requirementText(),
+                req.price(),
+                req.durationMin(),
+                req.closingPolicy());
 
         // 일단 status도 같이 바꿔줌
         if (req.status() != null) {
@@ -140,6 +152,7 @@ public class LessonService {
                 lesson.getMode(),
                 lesson.getStatus(),
                 styleTags,
+                lesson.getClosingPolicy(),
                 lesson.getCreateDt(),
                 lesson.getUpdateDt()
 
@@ -211,6 +224,7 @@ public class LessonService {
                     l.getMode(),
                     l.getStatus(),
                     styleTags,
+                    l.getClosingPolicy(),
                     l.getCreateDt(),
                     l.getUpdateDt()
             );
@@ -260,6 +274,7 @@ public class LessonService {
                 lesson.getMode(),
                 lesson.getStatus(),
                 styleTags,
+                lesson.getClosingPolicy(),
                 lesson.getCreateDt(),
                 lesson.getUpdateDt()
         );

@@ -1,6 +1,7 @@
 package com.muzin.mu.zin.dto.lesson;
 
 import com.muzin.mu.zin.dto.artist.ArtistProfileResponse;
+import com.muzin.mu.zin.entity.lesson.LessonClosingPolicy;
 import com.muzin.mu.zin.entity.lesson.LessonMode;
 import com.muzin.mu.zin.entity.lesson.LessonStatus;
 
@@ -18,6 +19,7 @@ public record ArtistLessonResponse(
         LessonMode mode,
         LessonStatus status,
         List<LessonStyleTagResponse> styleTags,
+        LessonClosingPolicy closingPolicy,
         LocalDateTime createDt,
         LocalDateTime updateDt
 ) {

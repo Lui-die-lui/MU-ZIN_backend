@@ -58,6 +58,11 @@ public class Lesson extends BaseTimeEntity {
     @Builder.Default
     private LessonStatus status = LessonStatus.ACTIVE;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "closing_policy", nullable = false)
+    @Builder.Default
+    private LessonClosingPolicy closingPolicy = LessonClosingPolicy.KEEP_OPEN_FOR_REQUEST;
+
     // 삭제 날짜를 따로 지정해서 지연 삭제
     @Column(name = "deleted_dt")
     private LocalDateTime deletedDt;
@@ -79,13 +84,15 @@ public class Lesson extends BaseTimeEntity {
     // 서비스 로직 개선 - 빈 값(null)으로 덮어쓰기 막음
     public void applyUpdate(String title, LessonMode mode,
                             String description, String requirementText,
-                            Integer price, Integer durationMin) {
+                            Integer price, Integer durationMin,
+                            LessonClosingPolicy closingPolicy) {
         if (title != null && !title.isBlank()) this.title = title;
         if (mode != null) this.mode = mode;
         if (description != null) this.description = description;
         if (requirementText != null) this.requirementText = requirementText;
         if (price != null) this.price = price;
         if (durationMin != null) this.durationMin = durationMin;
+        if (closingPolicy != null) this.closingPolicy = closingPolicy;
     }
 
     public void changeStatus(LessonStatus status) {

@@ -1,5 +1,6 @@
 package com.muzin.mu.zin.dto.lesson;
 
+import com.muzin.mu.zin.entity.lesson.LessonClosingPolicy;
 import com.muzin.mu.zin.entity.lesson.LessonMode;
 import com.muzin.mu.zin.entity.lesson.LessonStatus;
 
@@ -11,6 +12,7 @@ public record LessonUpdateRequest(
         Integer price,
         Integer durationMin,
         LessonStatus status,
-        Long instId
+        Long instId,
+        LessonClosingPolicy closingPolicy
 ) {
 }

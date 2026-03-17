@@ -1,5 +1,6 @@
 package com.muzin.mu.zin.dto.lesson;
 
+import com.muzin.mu.zin.entity.lesson.LessonClosingPolicy;
 import com.muzin.mu.zin.entity.lesson.LessonMode;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -13,7 +14,8 @@ public record LessonCreateRequest(
         Integer price,
         String description,
         String requirementText,
-        @NotNull Long instId
+        @NotNull Long instId,
+        LessonClosingPolicy closingPolicy
         ) {
 }
  
