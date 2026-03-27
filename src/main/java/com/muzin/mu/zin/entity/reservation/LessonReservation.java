@@ -1,5 +1,6 @@
 package com.muzin.mu.zin.entity.reservation;
 
+import com.muzin.mu.zin.common.TimeDefaults;
 import com.muzin.mu.zin.entity.User;
 import com.muzin.mu.zin.entity.common.BaseTimeEntity;
 import com.muzin.mu.zin.entity.lesson.Lesson;
@@ -68,21 +69,74 @@ public class LessonReservation extends BaseTimeEntity {
     @Column(name = "canceled_dt")
     private LocalDateTime canceledDt;
 
+    @Column(name = "completed_dt")
+    private LocalDateTime completedDt;
+
+    @Column(name = "completion_pending_dt")
+    private LocalDateTime completionPendingDt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "completion_source")
+    private CompletionSource completionSource;
+
 
     // 도메인 메서드
 
     public void confirm() {
+        if (this.status != ReservationStatus.REQUESTED) {
+            throw new IllegalStateException("확정할 수 없는 예약 상태입니다.");
+        }
         this.status = ReservationStatus.CONFIRMED;
-        this.confirmedDt = LocalDateTime.now();
+        this.confirmedDt = TimeDefaults.nowKst();
     }
 
     public void reject() {
+        if (this.status != ReservationStatus.REQUESTED) {
+            throw new IllegalStateException("거절할 수 없는 예약 상태입니다.");
+        }
         this.status = ReservationStatus.REJECTED;
     }
 
     public void cancel() {
+        if (this.status == ReservationStatus.COMPLETED ||
+                this.status == ReservationStatus.CANCELED ||
+                this.status == ReservationStatus.REJECTED ||
+                this.status == ReservationStatus.COMPLETION_PENDING) {
+            throw new IllegalStateException("취소할 수 없는 예약 상태입니다.");
+        }
+
         this.status = ReservationStatus.CANCELED;
-        this.canceledDt = LocalDateTime.now();
+        this.canceledDt = TimeDefaults.nowKst();
+    }
+
+    // 레슨 시작 시점에 status를 바꿔서 완료 흐름을 조금 더 명확하게 해줌
+    public void markCompletionPending() {
+        if (this.status != ReservationStatus.CONFIRMED) {
+            throw new IllegalStateException("완료 대기 상태로 변경할 수 없는 예약 상태입니다.");
+        }
+
+        this.status = ReservationStatus.COMPLETION_PENDING;
+        this.completionPendingDt = TimeDefaults.nowKst();
+    }
+
+    public void completeByArtist() {
+        if (this.status != ReservationStatus.COMPLETION_PENDING) {
+            throw new IllegalStateException("완료 처리할 수 없는 예약 상태입니다.");
+        }
+
+        this.status = ReservationStatus.COMPLETED;
+        this.completedDt = TimeDefaults.nowKst();
+        this.completionSource = CompletionSource.ARTIST;
+    }
+
+    public void autoComplete() {
+        if (this.status != ReservationStatus.COMPLETION_PENDING) {
+            throw new IllegalStateException("자동 완료 처리할 수 없는 예약 상태입니다.");
+        }
+
+        this.status = ReservationStatus.COMPLETED;
+        this.completedDt = TimeDefaults.nowKst();
+        this.completionSource = CompletionSource.SYSTEM;
     }
 
 

@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -44,8 +45,32 @@ public interface LessonReservationRepository extends JpaRepository<LessonReserva
     @EntityGraph(attributePaths = {"timeSlot", "lesson"})
     List<LessonReservation> findByLesson_LessonIdOrderByRequestedDtDesc(Long lessonId);
 
+    // timeSlot endDt 기준으로 COMPLETION_PENDING 을 잡아줌
+    @Query("""
+            select r
+            from LessonReservation r
+            join fetch r.timeSlot ts
+            join fetch r.lesson l
+            join fetch l.artistProfile ap
+            join fetch ap.user au
+            join fetch r.user u
+            where r.status = com.muzin.mu.zin.entity.reservation.ReservationStatus.CONFIRMED
+              and ts.endDt <= :now
+            """)
+    List<LessonReservation> findReservationsToMoveCompletionPending(@Param("now")LocalDateTime now);
 
-
+    @Query("""
+           select r
+           from LessonReservation r
+           join fetch r.timeSlot ts
+           join fetch r.lesson l
+           join fetch l.artistProfile ap
+           join fetch ap.user au
+           join fetch r.user u
+           where r.status = com.muzin.mu.zin.entity.reservation.ReservationStatus.COMPLETION_PENDING
+             and ts.endDt <= :baseTime
+    """)
+    List<LessonReservation> findReservationsToAutoComplete(@Param("baseTime") LocalDateTime baseTime);
 
 
 }

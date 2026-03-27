@@ -7,6 +7,7 @@ import com.muzin.mu.zin.security.model.PrincipalUser;
 import com.muzin.mu.zin.service.lesson.LessonReservationService;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -100,5 +101,19 @@ public class LessonReservationController {
             @AuthenticationPrincipal PrincipalUser principalUser
             ) {
         return reservationService.cancelByArtist(reservationId, req, principalUser);
+    }
+
+    // 레슨 끝났을 때 레슨 완료 상태로 변경
+    @PostMapping("/artist/{reservationId}/complete")
+    public ResponseEntity<ApiRespDto<?>> completeReservation(
+            @PathVariable Long reservationId,
+            @AuthenticationPrincipal PrincipalUser principalUser
+    ) {
+        return ResponseEntity.ok(
+                reservationService.completeReservationByArtist(
+                        reservationId,
+                        principalUser.getUserId()
+                )
+        );
     }
 }

@@ -332,6 +332,89 @@ public class LessonReservationService {
         return new ApiRespDto<>("success", "아티스트 사정으로 예약이 취소되었습니다.", null);
     }
 
+    // 완료 레슨 대기 전환
+    @Transactional
+    public void moveReservationToCompletionPending() {
+        LocalDateTime now = TimeDefaults.nowKst();
+
+        List<LessonReservation> reservations =
+                reservationRepository.findReservationsToMoveCompletionPending(now);
+
+        for (LessonReservation reservation : reservations) {
+            reservation.markCompletionPending();
+
+            Long artistUserId = reservation.getLesson()
+                    .getArtistProfile()
+                    .getUser()
+                    .getUserId();
+
+            publisher.publishEvent(new NotificationEvent(
+                    artistUserId,
+                    NotificationType.RESERVATION_COMPLETION_PENDING,
+                    "레슨 완료 요청",
+                    "레슨 시간이 만료된 레슨이 있습니다. 완료 처리를 해주세요.",
+                    NotificationRefType.RESERVATION,
+                    reservation.getReservationId()
+            ));
+        }
+    }
+
+    // 레슨 자동 완료
+    public void autoCompleteReservations() {
+        LocalDateTime baseTime = TimeDefaults.nowKst().minusHours(1);
+
+        List<LessonReservation> reservations =
+                reservationRepository.findReservationsToAutoComplete(baseTime);
+
+        for (LessonReservation reservation : reservations) {
+            reservation.autoComplete();
+
+            Long userId = reservation.getUser().getUserId();
+
+            publisher.publishEvent(new NotificationEvent(
+                    userId,
+                    NotificationType.RESERVATION_COMPLETED,
+                    "레슨 완료",
+                    "레슨이 자동으로 완료 처리되었습니다.",
+                    NotificationRefType.RESERVATION,
+                    reservation.getReservationId()
+            ));
+        }
+    }
+
+    // 아티스트 수동 완료
+    @Transactional
+    public ApiRespDto<?> completeReservationByArtist(Long reservationId, Long artistUserId) {
+        LessonReservation reservation = reservationRepository
+                .findByReservationIdAndLesson_ArtistProfile_User_UserId(reservationId, artistUserId)
+                .orElseThrow(() -> new IllegalArgumentException("잘못된 접근입니다. 다시 시도해주세요."));
+
+        if (reservation.getStatus() == ReservationStatus.COMPLETED) {
+            return new ApiRespDto<>("failed","이미 완료된 레슨입니다.",null);
+        }
+
+        if (reservation.getStatus() != ReservationStatus.COMPLETION_PENDING) {
+            return new ApiRespDto<>("failed", "완료 처리 가능한 상태가 아닙니다.",null);
+        }
+
+        reservation.completeByArtist();
+
+        Long userId = reservation.getUser().getUserId();
+
+        publisher.publishEvent(new NotificationEvent(
+                userId,
+                NotificationType.RESERVATION_COMPLETED,
+                "레슨 완료",
+                "레슨이 완료 처리되었습니다.",
+                NotificationRefType.RESERVATION,
+                reservation.getReservationId()
+        ));
+
+        return new ApiRespDto<>("success", "레슨이 완료 처리되었습니다.", null);
+
+
+    }
+
 
     // 공통 유틸 toResponse
     // DTO 변환 과정에서 LAZY 연관을 매번 꺼내 쓰는 구조라서 N+1이 생김 (
