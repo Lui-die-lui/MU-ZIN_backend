@@ -10,6 +10,7 @@ import com.muzin.mu.zin.entity.lesson.LessonTimeSlot;
 import com.muzin.mu.zin.entity.lesson.TimeSlotStatus;
 import com.muzin.mu.zin.entity.notification.NotificationRefType;
 import com.muzin.mu.zin.entity.notification.NotificationType;
+import com.muzin.mu.zin.entity.reservation.CompletionSource;
 import com.muzin.mu.zin.entity.reservation.LessonReservation;
 import com.muzin.mu.zin.entity.reservation.ReservationStatus;
 import com.muzin.mu.zin.event.NotificationEvent;
@@ -460,6 +461,10 @@ public class LessonReservationService {
                 r.getRequestedDt(),
                 r.getConfirmedDt(),
                 r.getCanceledDt(),
+                r.getCompletionPendingDt(),
+                r.getCompletedDt(),
+                r.getCompletionSource(),
+
                 lesson.getLessonId(),
                 lesson.getTitle(),
                 new TimeSlotResponse(ts.getTimeSlotId(), ts.getStartDt(), endDt, ts.getStatus()),
@@ -477,13 +482,25 @@ public class LessonReservationService {
         User requesterUser = r.getUser();
         User artistUser = lesson.getArtistProfile().getUser();
 
+        boolean myCompletionConfirmed =
+                r.getCompletionSource() == CompletionSource.ARTIST;
+
+        boolean canMarkCompleted =
+                r.getStatus() == ReservationStatus.COMPLETION_PENDING
+                && !myCompletionConfirmed;
+
         return new ArtistReservationDetailResponse(
                 r.getReservationId(),
                 r.getStatus(),
                 r.getPriceAtBooking(),
+
                 r.getRequestedDt(),
                 r.getConfirmedDt(),
                 r.getCanceledDt(),
+                r.getCompletionPendingDt(),
+                r.getCompletedDt(),
+                r.getCompletionSource(),
+
                 lesson.getLessonId(),
                 lesson.getTitle(),
                 new TimeSlotResponse(ts.getTimeSlotId(), ts.getStartDt(), endDt, ts.getStatus()),
@@ -493,8 +510,10 @@ public class LessonReservationService {
 
                 requesterUser.getUserId(),
                 requesterUser.getUsername(),
+                r.getRequestedMsg(),
 
-                r.getRequestedMsg()
+                canMarkCompleted,
+                myCompletionConfirmed
         );
     }
 }
