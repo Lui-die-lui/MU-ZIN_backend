@@ -31,7 +31,7 @@ public class LessonReservationController {
 
     // 유저 본인 예약 목록 리스트
     @GetMapping("/me")
-    public ApiRespDto<List<ReservationResponse>> getMyReservationList(
+    public ApiRespDto<List<ArtistReservationDetailResponse>> getMyReservationList(
             @AuthenticationPrincipal PrincipalUser principalUser
     ) {
         return reservationService.getMyReservationList(principalUser);
@@ -39,7 +39,7 @@ public class LessonReservationController {
 
     // 유저 본인 예약 단일 조회
     @GetMapping("/me/{reservationId}")
-    public ApiRespDto<ReservationResponse> getMyReservation(
+    public ApiRespDto<ArtistReservationDetailResponse> getMyReservation(
             @PathVariable Long reservationId,
             @AuthenticationPrincipal PrincipalUser principalUser
     ) {

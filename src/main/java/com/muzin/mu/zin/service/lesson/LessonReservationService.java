@@ -102,22 +102,22 @@ public class LessonReservationService {
 
     // 유저 예약한 레슨 목록 리스트
     @Transactional(readOnly = true)
-    public ApiRespDto<List<ReservationResponse>> getMyReservationList(PrincipalUser principalUser) {
+    public ApiRespDto<List<ArtistReservationDetailResponse>> getMyReservationList(PrincipalUser principalUser) {
         Long userId = principalUser.getUserId();
 
         List<LessonReservation> list = reservationRepository.findAllByUser_UserIdOrderByRequestedDtDesc(userId);
-        return new ApiRespDto<>("success", "",list.stream().map(this::toResponse).toList());
+        return new ApiRespDto<>("success", "",list.stream().map(this::toArtistDetail).toList());
     }
 
     // 유저 예약한 레슨 단일 조회
     @Transactional(readOnly = true)
-    public ApiRespDto<ReservationResponse> getMyReservation(Long reservationId, PrincipalUser principalUser) {
+    public ApiRespDto<ArtistReservationDetailResponse> getMyReservation(Long reservationId, PrincipalUser principalUser) {
         Long userId = principalUser.getUserId();
 
         LessonReservation reservation = reservationRepository.findByReservationIdAndUser_UserId(reservationId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("잘못된 접근입니다. 다시 시도해주세요."));
 
-        return new ApiRespDto<>("success", "조회 완료", toResponse(reservation));
+        return new ApiRespDto<>("success", "조회 완료", toArtistDetail(reservation));
     }
 
     // 유저 예약 취소
