@@ -361,6 +361,7 @@ public class LessonReservationService {
     }
 
     // 레슨 자동 완료
+    @Transactional
     public void autoCompleteReservations() {
         LocalDateTime baseTime = TimeDefaults.nowKst().minusHours(1);
 
