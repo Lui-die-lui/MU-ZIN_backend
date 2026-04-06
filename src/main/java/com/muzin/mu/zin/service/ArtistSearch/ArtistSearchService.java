@@ -16,6 +16,7 @@ public class ArtistSearchService {
 
     private final ArtistProfileRepository artistProfileRepository;
 
+
     public List<ArtistSearchResponse> searchArtists(ArtistSearchRequest req) {
         List<ArtistSearchRow> artistRows = artistProfileRepository.searchArtistRows(req);
 

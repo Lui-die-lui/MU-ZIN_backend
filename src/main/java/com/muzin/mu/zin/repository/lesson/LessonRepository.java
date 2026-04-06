@@ -24,6 +24,9 @@ public interface LessonRepository extends JpaRepository<Lesson, Long> {
     // 삭제 안 된 것만 목록 조회
     List<Lesson> findAllByArtistProfile_ArtistProfileIdAndDeletedDtIsNullOrderByLessonIdDesc(Long artistProfileId);
 
+
+    // 하단은 전부 queryDsl 로 변경
+
     // 검색 -
     // 스타일 태그는 매핑 테이블 있음 - join 필요
     // 검색란이 빈 채로 검색을 하면 (빈 문자열이면) 그냥 전체조회 - 나중에 유저위치 기반 시에 있는 레슨 받아올 예정
@@ -122,23 +125,25 @@ where l.deletedDt is null
 
     // 레슨 카드 목록용
     @Query("""
-    select new com.muzin.mu.zin.dto.lesson.LessonCardRow(
-        l.lessonId,
-        l.title,
-        l.price,
-        l.durationMin,
-        l.mode,
-        i.instId,
-        i.instName
-    )
-    from Lesson l
-    join l.instrument i
-    where l.artistProfile.artistProfileId = :artistProfileId
-      and l.deletedDt is null
-      and l.status = com.muzin.mu.zin.entity.lesson.LessonStatus.ACTIVE
-    order by l.lessonId desc
-""")
-    List<LessonCardRow> findArtistLessonCardRows(@Param("artistProfileId") Long artistProfileId);
+                select new com.muzin.mu.zin.dto.lesson.LessonCardRow(
+                    l.lessonId,
+                    l.title,
+                    l.price,
+                    l.durationMin,
+                    l.mode,
+                    i.instId,
+                    i.instName
+                )
+                from Lesson l
+                join l.instrument i
+                where l.artistProfile.artistProfileId = :artistProfileId
+                  and l.deletedDt is null
+                  and l.status = com.muzin.mu.zin.entity.lesson.LessonStatus.ACTIVE
+                order by l.lessonId desc
+            """)
+    default List<LessonCardRow> findArtistLessonCardRows(@Param("artistProfileId") Long artistProfileId) {
+        return null;
+    }
 
 
     // 선택 레슨 상세용

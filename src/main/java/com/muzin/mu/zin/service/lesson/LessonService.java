@@ -30,6 +30,7 @@ import java.util.List;
 public class LessonService {
 
     private final LessonRepository lessonRepository;
+    private final LessonRepositoryCustom lessonRepositoryCustom;
     private final LessonStyleMapRepository lessonStyleMapRepository;
     private final LessonTimeSlotRepository lessonTimeSlotRepository;
     private final ArtistProfileRepository artistProfileRepository;
