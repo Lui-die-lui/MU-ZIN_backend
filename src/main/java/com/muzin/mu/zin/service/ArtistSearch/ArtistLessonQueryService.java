@@ -7,6 +7,7 @@ import com.muzin.mu.zin.dto.artist.ArtistLessonDetailResponse;
 import com.muzin.mu.zin.dto.lesson.LessonCardRow;
 import com.muzin.mu.zin.entity.lesson.Lesson;
 import com.muzin.mu.zin.repository.lesson.LessonRepository;
+import com.muzin.mu.zin.repository.lesson.LessonRepositoryCustom;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,11 +19,12 @@ import java.util.List;
 public class ArtistLessonQueryService {
 
     private final LessonRepository lessonRepository;
+    private final LessonRepositoryCustom lessonRepositoryCustom;
 
 
     @Transactional(readOnly = true)
     public ApiRespDto<List<ArtistLessonCardResponse>> getArtistLessonCards(Long artistProfileId) {
-        List<ArtistLessonCardResponse> resp = lessonRepository.findArtistLessonCardRows(artistProfileId)
+        List<ArtistLessonCardResponse> resp = lessonRepositoryCustom.findArtistLessonCardRowDsl(artistProfileId)
                 .stream()
                 .map(this::toArtistLessonCardResponse)
                 .toList();
@@ -32,7 +34,7 @@ public class ArtistLessonQueryService {
 
     @Transactional(readOnly = true)
     public ApiRespDto<ArtistLessonDetailResponse> getArtistLessonDetail(Long artistProfileId, Long lessonId) {
-        Lesson lesson = lessonRepository.findArtistLessonDetail(artistProfileId, lessonId)
+        Lesson lesson = lessonRepositoryCustom.findArtistLessonDetailDsl(artistProfileId, lessonId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 레슨을 찾을 수 없습니다."));
         ArtistLessonDetailResponse resp = toArtistLessonDetailResponse(lesson);
         return new ApiRespDto<>("success", "", resp);

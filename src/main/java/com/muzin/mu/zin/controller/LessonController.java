@@ -1,13 +1,11 @@
 package com.muzin.mu.zin.controller;
 
 import com.muzin.mu.zin.dto.ApiRespDto;
-import com.muzin.mu.zin.dto.lesson.LessonCreateRequest;
-import com.muzin.mu.zin.dto.lesson.LessonDetailResponse;
-import com.muzin.mu.zin.dto.lesson.LessonUpdateRequest;
-import com.muzin.mu.zin.dto.lesson.SetLessonStylesRequest;
+import com.muzin.mu.zin.dto.lesson.*;
 import com.muzin.mu.zin.entity.instrument.InstrumentCategory;
 import com.muzin.mu.zin.entity.lesson.LessonMode;
 import com.muzin.mu.zin.entity.lesson.LessonSort;
+import com.muzin.mu.zin.repository.lesson.LessonSearchCond;
 import com.muzin.mu.zin.security.model.PrincipalUser;
 import com.muzin.mu.zin.service.lesson.LessonService;
 import com.muzin.mu.zin.service.lesson.LessonStyleService;
@@ -84,30 +82,26 @@ public class LessonController {
     // 레슨 검색 (나중에 지역 기반 추가 예정)
     @GetMapping
     public ApiRespDto<?> searchLessons(
-            @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) LessonMode mode,
-            @RequestParam(required = false) List<Long> styleTagIds,
-            @RequestParam(required = false) InstrumentCategory instrumentCategory,
-            @RequestParam(required = false) List<Long> instIds,
-            @RequestParam(defaultValue = "LATEST") LessonSort sort,
-
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-            LocalDateTime from,
-
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-            LocalDateTime to,
-
-            @RequestParam(required = false) List<Integer> daysOfWeek,
-            @RequestParam(required = false) List<String> timeParts
-
-    ) {
-        return lessonService.searchLessons(
-                keyword, mode, styleTagIds,
-                instrumentCategory, instIds,
-                sort, from, to,
-                daysOfWeek, timeParts);
+//            @RequestParam(required = false) String keyword,
+//            @RequestParam(required = false) LessonMode mode,
+//            @RequestParam(required = false) List<Long> styleTagIds,
+//            @RequestParam(required = false) InstrumentCategory instrumentCategory,
+//            @RequestParam(required = false) List<Long> instIds,
+//            @RequestParam(defaultValue = "LATEST") LessonSort sort,
+//
+//            @RequestParam(required = false)
+//            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+//            LocalDateTime from,
+//
+//            @RequestParam(required = false)
+//            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+//            LocalDateTime to,
+//
+//            @RequestParam(required = false) List<Integer> daysOfWeek,
+//            @RequestParam(required = false) List<String> timeParts
+            @ModelAttribute LessonSearchRequest req
+            ) {
+        return lessonService.searchLessons(req);
     }
 
     // 레슨 단일 조회

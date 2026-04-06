@@ -5,6 +5,7 @@ import com.muzin.mu.zin.dto.ApiRespDto;
 import com.muzin.mu.zin.dto.artist.ArtistSummaryResponse;
 import com.muzin.mu.zin.dto.lesson.*;
 import com.muzin.mu.zin.entity.ArtistProfile;
+import com.muzin.mu.zin.entity.TimePart;
 import com.muzin.mu.zin.entity.User;
 import com.muzin.mu.zin.entity.instrument.Instrument;
 import com.muzin.mu.zin.entity.instrument.InstrumentCategory;
@@ -285,66 +286,71 @@ public class LessonService {
 
     // 레슨 검색(레슨 리스트)
     @Transactional(readOnly = true)
-    public ApiRespDto<List<LessonSearchResponse>> searchLessons(
-            String keyword,
-            LessonMode mode,
-            List<Long> styleTagIds,
+    public ApiRespDto<List<LessonSearchResponse>> searchLessons(LessonSearchRequest req) {
+        String keyword = (req.keyword() == null || req.keyword().isBlank() ? null : req.keyword().trim());
 
-            InstrumentCategory instCategory,
-            List<Long> instIds,
-            LessonSort sort,
-
-            LocalDateTime from,
-            LocalDateTime to,
-
-            List<Integer> daysOfWeek,
-            List<String> timeParts
-            ) {
+        LessonSort sort = (req.sort() == null) ? LessonSort.LATEST : req.sort();
 
         // 기본값 보정
 
         // 키워드 검색
         String k = (keyword == null || keyword.isBlank()) ? "" : keyword.trim();
-        boolean applyKeyword = !k.isBlank();
+//        boolean applyKeyword = !k.isBlank();
+//
+//
+//        // 스타일 태그 - List는 절대 null로 넘기지 말기
+//        boolean applyTags = styleTagIds != null && !styleTagIds.isEmpty();
+//        List<Long> tags = applyTags ? styleTagIds : List.of(-1L);
+//
+//        // 악기
+//        boolean applyInst = instIds != null && !instIds.isEmpty();
+//        List<Long> inst = applyInst ? instIds : List.of(-1L);
+//
+//        // (applyTime이 false여도 from/to는 그냥 안전한 값으로 채워서 보냄)
+//        // 레슨 기간
+//        LocalDateTime f = (from == null) ? TimeDefaults.nowKst() : from;
+//        LocalDateTime t = (to == null) ? f.plusDays(90) : to;
+//
+//        // 요일
+//        boolean applyWeekday = (daysOfWeek != null && !daysOfWeek.isEmpty());
+//        List<Integer> dows = applyWeekday ? daysOfWeek : List.of(-1);
+//
+//        boolean applyTimeParts = (timeParts != null && !timeParts.isEmpty());
+//        List<String> parts = applyTimeParts ? timeParts : List.of("__NONE__");
+//
+//        // 시간 필터 정책 결정 포인트
+//        // "아무 필터 없이 검색하면 전체 레슨(슬롯 없어도) 뜨게"가 목표면 applyTime=false로 둬야 함.
+//        boolean applyTime = (from != null || to != null) || applyWeekday || applyTimeParts;
+//
+//        Pageable pageable = PageRequest.of(0, 200, toSort(sort));
+        boolean useTimeFilter =
+                req.from() != null || req.to() != null ||
+                        (req.daysOfWeek() != null && !req.daysOfWeek().isEmpty()) ||
+                        (req.timeParts() != null && !req.timeParts().isEmpty());
 
+        LocalDateTime effectiveFrom = null;
+        LocalDateTime effectiveTo = null;
 
-        // 스타일 태그 - List는 절대 null로 넘기지 말기
-        boolean applyTags = styleTagIds != null && !styleTagIds.isEmpty();
-        List<Long> tags = applyTags ? styleTagIds : List.of(-1L);
-
-        // 악기
-        boolean applyInst = instIds != null && !instIds.isEmpty();
-        List<Long> inst = applyInst ? instIds : List.of(-1L);
-
-        // (applyTime이 false여도 from/to는 그냥 안전한 값으로 채워서 보냄)
-        // 레슨 기간
-        LocalDateTime f = (from == null) ? TimeDefaults.nowKst() : from;
-        LocalDateTime t = (to == null) ? f.plusDays(90) : to;
-
-        // 요일
-        boolean applyWeekday = (daysOfWeek != null && !daysOfWeek.isEmpty());
-        List<Integer> dows = applyWeekday ? daysOfWeek : List.of(-1);
-
-        boolean applyTimeParts = (timeParts != null && !timeParts.isEmpty());
-        List<String> parts = applyTimeParts ? timeParts : List.of("__NONE__");
-
-        // 시간 필터 정책 결정 포인트
-        // "아무 필터 없이 검색하면 전체 레슨(슬롯 없어도) 뜨게"가 목표면 applyTime=false로 둬야 함.
-        boolean applyTime = (from != null || to != null) || applyWeekday || applyTimeParts;
+        if (useTimeFilter) {
+            effectiveFrom = (req.from() == null) ? TimeDefaults.nowKst() : req.from();
+            effectiveTo = (req.from() == null) ? effectiveFrom.plusDays(90) : req.to();
+        }
 
         Pageable pageable = PageRequest.of(0, 200, toSort(sort));
 
-        List<Lesson> lessons = lessonRepository.searchPublicLessons(
-                k, applyKeyword,
-                mode,
-                tags, applyTags,
-                instCategory,
-                inst, applyInst,
-                f, t, applyTime,
-                dows, applyWeekday,
-                parts, applyTimeParts,
-                pageable
+        LessonSearchCond cond = new LessonSearchCond(
+                keyword,
+                req.mode(),
+                req.styleTagIds(),
+                req.instCategory(),
+                req.instIds(),
+                effectiveFrom,
+                effectiveTo,
+                req.daysOfWeek(),
+                req.timeParts()
         );
+
+        List<Lesson> lessons = lessonRepositoryCustom.searchPublicLessons(cond, pageable);
 
         List<LessonSearchResponse> resp = lessons.stream()
                 .map(l -> new LessonSearchResponse(
@@ -365,7 +371,7 @@ public class LessonService {
     @Transactional(readOnly = true)
     public ApiRespDto<LessonDetailResponse> getPublicLessonDetail(Long lessonId) {
 
-        Lesson lesson = lessonRepository.findPublicDetailById(lessonId)
+        Lesson lesson = lessonRepositoryCustom.findPublicDetailByIdDsl(lessonId)
                 .orElseThrow(() -> new IllegalArgumentException("레슨이 없습니다."));
 
         if (lesson.isDeleted()) {
