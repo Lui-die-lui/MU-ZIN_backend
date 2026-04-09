@@ -1,6 +1,8 @@
 package com.muzin.mu.zin.dto.artist;
 
 import com.muzin.mu.zin.dto.instrument.InstrumentResponse;
+import com.muzin.mu.zin.dto.region.MainRegionResponse;
+import com.muzin.mu.zin.dto.region.ServiceRegionResponse;
 import com.muzin.mu.zin.entity.ArtistStatus;
 
 import java.util.List;
@@ -14,6 +16,8 @@ public record ArtistProfileResponse(
         String career,
         String majorName,
         ArtistStatus status,
-        List<InstrumentResponse> instruments
+        List<InstrumentResponse> instruments,
+        MainRegionResponse mainRegion,
+        List<ServiceRegionResponse> serviceRegions
 ) {
 }

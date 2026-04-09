@@ -6,9 +6,10 @@ import com.muzin.mu.zin.dto.artist.ArtistProfileResponse;
 import com.muzin.mu.zin.dto.artist.ArtistProfileUpsertRequest;
 import com.muzin.mu.zin.dto.instrument.InstrumentResponse;
 import com.muzin.mu.zin.dto.lesson.LessonStyleTagResponse;
-import com.muzin.mu.zin.dto.region.MainRegionResponse;
 import com.muzin.mu.zin.dto.region.MainActivityRegionRequest;
+import com.muzin.mu.zin.dto.region.MainRegionResponse;
 import com.muzin.mu.zin.dto.region.ServiceRegionRequest;
+import com.muzin.mu.zin.dto.region.ServiceRegionResponse;
 import com.muzin.mu.zin.entity.ArtistInstrument;
 import com.muzin.mu.zin.entity.ArtistProfile;
 import com.muzin.mu.zin.entity.ArtistStatus;
@@ -86,8 +87,15 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
                        .majorName(req.majorName())
                        .build());
 
-       // 이미 있으면 update
+        // 이미 있으면 update
        profile.updateProfile(req.bio(), req.career(), req.majorName());
+
+        // 대표 활동 지역 반영
+        applyMainRegion(profile, req.mainRegion());
+
+        // 서비스 가능 지역 최대 5개 교체 반영
+        replaceServiceRegions(profile, req.serviceRegions());
+
        ArtistProfile saved = artistProfileRepository.save(profile);
 
        // 악기 포함 응답(없으면 빈 리스트)
@@ -135,6 +143,9 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
 
         ArtistProfile profile = getProfileOrThrow(user.getUserId());
         profile.updateProfile(req.bio(), req.career(), profile.getMajorName()); // 전공을 수정 가능x, 그냥 원래 프로필
+
+        applyMainRegion(profile, req.mainRegion());
+        replaceServiceRegions(profile, req.serviceRegions());
 
         ArtistProfile saved = artistProfileRepository.save(profile);
         return new ApiRespDto<>("success", "프로필 수정 완료", toResponse(saved));
@@ -185,6 +196,30 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
                 .map(i -> new InstrumentResponse(i.getInstId(), i.getInstName(), i.getCategory()))
                 .toList();
 
+        MainRegionResponse mainRegion = null;
+        if (profile.getRegion1DepthName() != null
+                || profile.getRegion2DepthName() != null
+                || profile.getRegion3DepthName() != null
+                || profile.getAddressLabel() != null
+                || profile.getLatitude() != null
+                || profile.getLongitude() != null) {
+            mainRegion = new MainRegionResponse(
+                    profile.getRegion1DepthName(),
+                    profile.getRegion2DepthName(),
+                    profile.getRegion3DepthName(),
+                    profile.getAddressLabel(),
+                    profile.getLatitude(),
+                    profile.getLongitude()
+            );
+        }
+
+        List<ServiceRegionResponse> serviceRegions = profile.getServiceRegions().stream()
+                .map(region -> new ServiceRegionResponse(
+                        region.getRegion1DepthName(),
+                        region.getRegion2DepthName()
+                ))
+                .toList();
+
         ArtistProfileResponse resp = new ArtistProfileResponse(
                 profile.getArtistProfileId(),
                 user.getUserId(),
@@ -194,7 +229,9 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
                 profile.getCareer(),
                 profile.getMajorName(),
                 profile.getUser().getArtistStatus(), // 상태 소유자 = 유저 이기때문에 dto 내에 있어도 이렇게 가져와야함
-                instrumentResponses
+                instrumentResponses,
+                mainRegion,
+                serviceRegions
         );
 
         return new ApiRespDto<>("success", "악기 목록이 저장되었습니다.", resp);
@@ -264,6 +301,30 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
                 ))
                 .toList();
 
+        MainRegionResponse mainRegion = null;
+        if (profile.getRegion1DepthName() != null
+                || profile.getRegion2DepthName() != null
+                || profile.getRegion3DepthName() != null
+                || profile.getAddressLabel() != null
+                || profile.getLatitude() != null
+                || profile.getLongitude() != null) {
+            mainRegion = new MainRegionResponse(
+                    profile.getRegion1DepthName(),
+                    profile.getRegion2DepthName(),
+                    profile.getRegion3DepthName(),
+                    profile.getAddressLabel(),
+                    profile.getLatitude(),
+                    profile.getLongitude()
+            );
+        }
+
+        List<ServiceRegionResponse> serviceRegions = profile.getServiceRegions().stream()
+                .map(region -> new ServiceRegionResponse(
+                        region.getRegion1DepthName(),
+                        region.getRegion2DepthName()
+                ))
+                .toList();
+
         return new ArtistProfileResponse(
                 profile.getArtistProfileId(),
                 profile.getUser().getUserId(),
@@ -273,8 +334,9 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
                 profile.getCareer(),
                 profile.getMajorName(),
                 profile.getUser().getArtistStatus(),
-                instruments
-
+                instruments,
+                mainRegion,
+                serviceRegions
         );
     }
 
@@ -319,6 +381,10 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
     // 서비스 지역 리스트화 및 갯수 제한
     private void replaceServiceRegions(ArtistProfile profile, List<ServiceRegionRequest> reqs) {
         List<ServiceRegionRequest> regions = (reqs == null ? List.<ServiceRegionRequest>of() : reqs).stream()
+                .map(r -> new ServiceRegionRequest(
+                        trimToNull(r.region1DepthName()),
+                        trimToNull(r.region2DepthName())
+                ))
                 .filter(r -> r.region1DepthName() != null && !r.region1DepthName().isBlank())
                 .filter(r -> r.region2DepthName() != null && !r.region2DepthName().isBlank())
                 .distinct()
@@ -335,6 +401,12 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
         }
     }
 
+    private String trimToNull(String value) {
+        if (value == null) return null;
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
     // 주 활동 지역 비었을 때
     private boolean isMainRegionEmpty(MainActivityRegionRequest req) {
         return isBlank(req.region1DepthName())
@@ -348,10 +420,5 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
     }
-
-    // 아티스트 지역 응답 변환 함수
-//    private MainRegionResponse toArtistRegionResp(ArtistProfile profile) {
-//
-//    }
 
 }
