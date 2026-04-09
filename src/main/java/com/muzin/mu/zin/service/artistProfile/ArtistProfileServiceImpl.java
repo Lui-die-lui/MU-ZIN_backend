@@ -6,6 +6,9 @@ import com.muzin.mu.zin.dto.artist.ArtistProfileResponse;
 import com.muzin.mu.zin.dto.artist.ArtistProfileUpsertRequest;
 import com.muzin.mu.zin.dto.instrument.InstrumentResponse;
 import com.muzin.mu.zin.dto.lesson.LessonStyleTagResponse;
+import com.muzin.mu.zin.dto.region.MainRegionResponse;
+import com.muzin.mu.zin.dto.region.MainActivityRegionRequest;
+import com.muzin.mu.zin.dto.region.ServiceRegionRequest;
 import com.muzin.mu.zin.entity.ArtistInstrument;
 import com.muzin.mu.zin.entity.ArtistProfile;
 import com.muzin.mu.zin.entity.ArtistStatus;
@@ -219,7 +222,6 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
         return new ApiRespDto<>("success","아티스트 상세 조회 완료", toDetailResponse(profile, styleTags));
     }
 
-
     // guard & helpers
 
     // 요청 보내는 user의 Status를 확인
@@ -296,5 +298,60 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
                 styleTags
         );
     }
+
+    // 주 활동 지역 요청 헬퍼
+    private void applyMainRegion(ArtistProfile profile, MainActivityRegionRequest req) {
+        if (req == null || isMainRegionEmpty(req)) {
+            profile.clearRegion();
+            return;
+        }
+
+        profile.updateRegion(
+                req.region1DepthName(),
+                req.region2DepthName(),
+                req.region3DepthName(),
+                req.addressLabel(),
+                req.latitude(),
+                req.longitude()
+        );
+    }
+
+    // 서비스 지역 리스트화 및 갯수 제한
+    private void replaceServiceRegions(ArtistProfile profile, List<ServiceRegionRequest> reqs) {
+        List<ServiceRegionRequest> regions = (reqs == null ? List.<ServiceRegionRequest>of() : reqs).stream()
+                .filter(r -> r.region1DepthName() != null && !r.region1DepthName().isBlank())
+                .filter(r -> r.region2DepthName() != null && !r.region2DepthName().isBlank())
+                .distinct()
+                .toList();
+
+        if (regions.size() > 5) {
+            throw new IllegalArgumentException("서비스 가능 지역은 최대 5개까지 등록할 수 있습니다.");
+        }
+
+        profile.clearServiceRegions();
+
+        for (ServiceRegionRequest region : regions) {
+            profile.addServiceRegion(region.region1DepthName(), region.region2DepthName());
+        }
+    }
+
+    // 주 활동 지역 비었을 때
+    private boolean isMainRegionEmpty(MainActivityRegionRequest req) {
+        return isBlank(req.region1DepthName())
+                && isBlank(req.region2DepthName())
+                && isBlank(req.region3DepthName())
+                && isBlank(req.addressLabel())
+                && req.latitude() == null
+                && req.longitude() == null;
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
+    }
+
+    // 아티스트 지역 응답 변환 함수
+//    private MainRegionResponse toArtistRegionResp(ArtistProfile profile) {
+//
+//    }
 
 }
