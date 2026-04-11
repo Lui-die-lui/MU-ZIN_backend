@@ -395,6 +395,7 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
         }
 
         profile.clearServiceRegions();
+        artistProfileRepository.flush();
 
         for (ServiceRegionRequest region : regions) {
             profile.addServiceRegion(region.region1DepthName(), region.region2DepthName());
