@@ -102,6 +102,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PATCH,"/lessons/**").authenticated()
                 .requestMatchers(HttpMethod.DELETE,"/lessons/**").authenticated()
 
+                .requestMatchers(HttpMethod.GET, "/regions/**").permitAll()
+
                 .requestMatchers("/auth/**", "/login", "/error", "/oauth2/**", "/login/oauth2/**",
                     "/mail/verify", "/instruments/**", "/lessons/style-tags", "/artists/**").permitAll();
 

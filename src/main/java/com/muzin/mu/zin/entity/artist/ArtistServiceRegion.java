@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
         uniqueConstraints = {
                 @UniqueConstraint(
                         name = "uk_artist_service_region_unique",
-                        columnNames = {"artist_profile_id", "region1_depth_name", "region2_depth_name"}
+                        columnNames = {"artist_profile_id", "region1_depth_name", "region2_depth_name", "region3_depth_name"}
                 )
         }
 )
@@ -33,19 +33,25 @@ public class ArtistServiceRegion {
     @Column(name = "region1_depth_name", length = 40, nullable = false)
     private String region1DepthName;
 
-    @Column(name = "region2_depth_name", length = 40, nullable = false)
+    @Column(name = "region2_depth_name", length = 40)
     private String region2DepthName;
+
+    // 광역시가 아닌 지역 읍면동 받아줌
+    @Column(name = "region3_depth_name", length = 40)
+    private String region3DepthName;
 
     // static 메서드(of) 내부에서 사용할 생성자
     // 외부에서 직접 new 하지 않도록 protected로 제한
     protected ArtistServiceRegion(
             ArtistProfile artistProfile,
             String region1DepthName,
-            String region2DepthName
+            String region2DepthName,
+            String region3DepthName
     ) {
         this.artistProfile = artistProfile;
         this.region1DepthName = region1DepthName;
         this.region2DepthName = region2DepthName;
+        this.region3DepthName = region3DepthName;
     }
 
     // 아티스트에 속한 서비스 가능 지역 엔티티 생성
@@ -53,8 +59,9 @@ public class ArtistServiceRegion {
     public static ArtistServiceRegion of(
             ArtistProfile artistProfile,
             String region1DepthName,
-            String region2DepthName
+            String region2DepthName,
+            String region3DepthName
     ) {
-        return new ArtistServiceRegion(artistProfile, region1DepthName, region2DepthName);
+        return new ArtistServiceRegion(artistProfile, region1DepthName, region2DepthName, region3DepthName);
     }
 }

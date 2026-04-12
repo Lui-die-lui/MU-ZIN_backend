@@ -216,7 +216,8 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
         List<ServiceRegionResponse> serviceRegions = profile.getServiceRegions().stream()
                 .map(region -> new ServiceRegionResponse(
                         region.getRegion1DepthName(),
-                        region.getRegion2DepthName()
+                        region.getRegion2DepthName(),
+                        region.getRegion3DepthName()
                 ))
                 .toList();
 
@@ -321,7 +322,8 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
         List<ServiceRegionResponse> serviceRegions = profile.getServiceRegions().stream()
                 .map(region -> new ServiceRegionResponse(
                         region.getRegion1DepthName(),
-                        region.getRegion2DepthName()
+                        region.getRegion2DepthName(),
+                        region.getRegion3DepthName()
                 ))
                 .toList();
 
@@ -383,10 +385,11 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
         List<ServiceRegionRequest> regions = (reqs == null ? List.<ServiceRegionRequest>of() : reqs).stream()
                 .map(r -> new ServiceRegionRequest(
                         trimToNull(r.region1DepthName()),
-                        trimToNull(r.region2DepthName())
+                        trimToNull(r.region2DepthName()),
+                        trimToNull(r.region3DepthName())
                 ))
                 .filter(r -> r.region1DepthName() != null && !r.region1DepthName().isBlank())
-                .filter(r -> r.region2DepthName() != null && !r.region2DepthName().isBlank())
+//                .filter(r -> r.region2DepthName() != null && !r.region2DepthName().isBlank())
                 .distinct()
                 .toList();
 
@@ -398,7 +401,7 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
         artistProfileRepository.flush();
 
         for (ServiceRegionRequest region : regions) {
-            profile.addServiceRegion(region.region1DepthName(), region.region2DepthName());
+            profile.addServiceRegion(region.region1DepthName(), region.region2DepthName(), region.region3DepthName());
         }
     }
 

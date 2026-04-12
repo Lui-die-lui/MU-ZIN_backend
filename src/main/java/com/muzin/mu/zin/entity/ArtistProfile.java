@@ -158,8 +158,8 @@ public class ArtistProfile extends BaseTimeEntity {
     }
 
     // 서비스 지역 업데이트 및 지우기
-    public void addServiceRegion(String region1DepthName, String region2DepthName) {
-        this.serviceRegions.add(ArtistServiceRegion.of(this, region1DepthName, region2DepthName));
+    public void addServiceRegion(String region1DepthName, String region2DepthName, String region3DepthName) {
+        this.serviceRegions.add(ArtistServiceRegion.of(this, region1DepthName, region2DepthName, region3DepthName));
     }
 
     public void clearServiceRegions() {
