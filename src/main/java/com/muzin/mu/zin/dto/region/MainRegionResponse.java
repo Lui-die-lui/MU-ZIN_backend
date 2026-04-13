@@ -7,6 +7,9 @@ public record MainRegionResponse(
         String region2DepthName,
         String region3DepthName,
         String addressLabel,
+        String roadAddress,
+        String jibunAddress,
+        String detailAddress,
         BigDecimal latitude,
         BigDecimal longitude
 ) {

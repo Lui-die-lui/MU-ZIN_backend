@@ -201,6 +201,9 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
                 || profile.getRegion2DepthName() != null
                 || profile.getRegion3DepthName() != null
                 || profile.getAddressLabel() != null
+                || profile.getRoadAddress() != null
+                || profile.getJibunAddress() != null
+                || profile.getDetailAddress() != null
                 || profile.getLatitude() != null
                 || profile.getLongitude() != null) {
             mainRegion = new MainRegionResponse(
@@ -208,6 +211,9 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
                     profile.getRegion2DepthName(),
                     profile.getRegion3DepthName(),
                     profile.getAddressLabel(),
+                    profile.getRoadAddress(),
+                    profile.getJibunAddress(),
+                    profile.getDetailAddress(),
                     profile.getLatitude(),
                     profile.getLongitude()
             );
@@ -307,6 +313,9 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
                 || profile.getRegion2DepthName() != null
                 || profile.getRegion3DepthName() != null
                 || profile.getAddressLabel() != null
+                || profile.getRoadAddress() != null
+                || profile.getJibunAddress() != null
+                || profile.getDetailAddress() != null
                 || profile.getLatitude() != null
                 || profile.getLongitude() != null) {
             mainRegion = new MainRegionResponse(
@@ -314,6 +323,9 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
                     profile.getRegion2DepthName(),
                     profile.getRegion3DepthName(),
                     profile.getAddressLabel(),
+                    profile.getRoadAddress(),
+                    profile.getJibunAddress(),
+                    profile.getDetailAddress(),
                     profile.getLatitude(),
                     profile.getLongitude()
             );
@@ -375,6 +387,9 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
                 req.region2DepthName(),
                 req.region3DepthName(),
                 req.addressLabel(),
+                req.roadAddress(),
+                req.jibunAddress(),
+                req.detailAddress(),
                 req.latitude(),
                 req.longitude()
         );

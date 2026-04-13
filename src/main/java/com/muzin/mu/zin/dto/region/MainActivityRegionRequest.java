@@ -10,6 +10,7 @@ public record MainActivityRegionRequest(
         String addressLabel,
         String roadAddress,
         String jibunAddress,
+        String detailAddress,
         BigDecimal latitude,
         BigDecimal longitude
 ) {

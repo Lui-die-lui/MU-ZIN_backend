@@ -80,6 +80,15 @@ public class ArtistProfile extends BaseTimeEntity {
     @Column(name = "address_label", length = 120)
     private String addressLabel;
 
+    @Column(name = "road_address", length = 150)
+    private String roadAddress;
+
+    @Column(name = "jibun_address", length = 150)
+    private String jibunAddress;
+
+    @Column(name = "detail_address", length = 120)
+    private String detailAddress;
+
     // precision = 소숫점 앞 뒤 합쳐서 총 10자리 저장 가능(전체 자리 최대 개수)
     // scale = 소수점 이하 저장되는 자리 개수
     // BigDecimal = 정밀 수치 숫자 타입(소수의 오차를 적게, 정확하게 다룸)
@@ -137,6 +146,9 @@ public class ArtistProfile extends BaseTimeEntity {
             String region2DepthName,
             String region3DepthName,
             String addressLabel,
+            String roadAddress,
+            String jibunAddress,
+            String detailAddress,
             BigDecimal latitude,
             BigDecimal longitude
     ) {
@@ -144,15 +156,20 @@ public class ArtistProfile extends BaseTimeEntity {
         this.region2DepthName = region2DepthName;
         this.region3DepthName = region3DepthName;
         this.addressLabel = addressLabel;
+        this.roadAddress = roadAddress;
+        this.jibunAddress = jibunAddress;
+        this.detailAddress = detailAddress;
         this.latitude = latitude;
         this.longitude = longitude;
     }
 
     public void clearRegion() {
-        this.region1DepthName = null;
         this.region2DepthName = null;
         this.region3DepthName = null;
         this.addressLabel = null;
+        this.roadAddress = null;
+        this.jibunAddress = null;
+        this.detailAddress = null;
         this.latitude = null;
         this.longitude = null;
     }
