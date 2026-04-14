@@ -78,25 +78,7 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
        User user = getUserOrThrow(principalUser.getUserId());
        requireStatus(user, EnumSet.of(ArtistStatus.NONE, ArtistStatus.REJECTED));
 
-
-       ArtistProfile profile = artistProfileRepository.findByUser_UserId(user.getUserId())
-               .orElseGet(() -> ArtistProfile.builder()
-                       .user(user)
-                       .bio(req.bio())
-                       .career(req.career())
-                       .majorName(req.majorName())
-                       .build());
-
-        // 이미 있으면 update
-       profile.updateProfile(req.bio(), req.career(), req.majorName());
-
-        // 대표 활동 지역 반영
-        applyMainRegion(profile, req.mainRegion());
-
-        // 서비스 가능 지역 최대 5개 교체 반영
-        replaceServiceRegions(profile, req.serviceRegions());
-
-       ArtistProfile saved = artistProfileRepository.save(profile);
+       ArtistProfile saved = upsertArtistProfile(user, req);
 
        // 악기 포함 응답(없으면 빈 리스트)
        return new ApiRespDto<>("success", "임시 저장 완료", toResponse(saved));
@@ -116,17 +98,17 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
         ArtistProfile profile = getProfileOrThrow(user.getUserId());
         validateForSubmit(profile);
 
+
         boolean hasInstrument = artistInstrumentRepository.existsByArtistProfile_ArtistProfileId(profile.getArtistProfileId());
         if (!hasInstrument) {
             throw new IllegalArgumentException("최소 1개 이상의 악기를 등록해야 제출할 수 있습니다.");
         }
 
         profile.markSubmitted();
-        artistProfileRepository.save(profile);
+        profile.clearRejectReason();
 
         // 제출 시 PENDING으로 전환시켜줌
         user.setArtistStatus(ArtistStatus.PENDING);
-        profile.clearRejectReason(); // 재제출 시 이전 반려 사유 제거
         userRepository.save(user);
 
         return new ApiRespDto<>("success", "아티스트 전환 신청이 제출되었습니다.", null);
@@ -287,6 +269,9 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
         if (profile.getCareer() == null || profile.getCareer().isBlank()) {
             throw new IllegalArgumentException("경력 입력은 필수입니다.");
         }
+        if (profile.getServiceRegions() == null || profile.getServiceRegions().isEmpty()) {
+            throw new IllegalArgumentException("서비스 가능 지역은 최소 1개 이상 필요합니다.");
+        }
     }
 
     private User getUserOrThrow(Long userId) {
@@ -438,6 +423,25 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
 
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+
+    // 아티스트 전환 로직 upsert 공통 메서드
+    private ArtistProfile upsertArtistProfile(User user, ArtistProfileUpsertRequest req) {
+        ArtistProfile profile = artistProfileRepository.findByUser_UserId(user.getUserId())
+                .orElseGet(() -> ArtistProfile.builder()
+                        .user(user)
+                        .bio(req.bio())
+                        .career(req.career())
+                        .majorName(req.majorName())
+                        .build());
+
+        profile.updateProfile(req.bio(), req.career(), req.majorName());
+
+        applyMainRegion(profile, req.mainRegion());
+        replaceServiceRegions(profile, req.serviceRegions());
+
+        return artistProfileRepository.save(profile);
     }
 
 }
