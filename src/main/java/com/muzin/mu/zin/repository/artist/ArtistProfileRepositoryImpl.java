@@ -2,12 +2,13 @@ package com.muzin.mu.zin.repository.artist;
 
 import com.muzin.mu.zin.dto.artist.ArtistInstrumentRow;
 import com.muzin.mu.zin.dto.artist.ArtistSearchRequest;
-import com.muzin.mu.zin.dto.artist.ArtistSearchResponse;
 import com.muzin.mu.zin.dto.artist.ArtistSearchRow;
+import com.muzin.mu.zin.dto.region.SearchServiceRegionRow;
 import com.muzin.mu.zin.entity.ArtistStatus;
 import com.muzin.mu.zin.entity.QArtistInstrument;
 import com.muzin.mu.zin.entity.QArtistProfile;
 import com.muzin.mu.zin.entity.QUser;
+import com.muzin.mu.zin.entity.artist.QArtistServiceRegion;
 import com.muzin.mu.zin.entity.artist.QArtistStyleMap;
 import com.muzin.mu.zin.entity.instrument.InstrumentCategory;
 import com.querydsl.core.types.Projections;
@@ -15,8 +16,6 @@ import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.jpa.repository.query.JpaQueryMethodFactory;
-import org.springframework.expression.spel.ast.Projection;
 
 import java.util.List;
 
@@ -34,6 +33,7 @@ public class ArtistProfileRepositoryImpl implements ArtistProfileRepositoryCusto
         QArtistInstrument artistInstrument = QArtistInstrument.artistInstrument;
         QArtistStyleMap artistStyleMap = QArtistStyleMap.artistStyleMap;
 
+
         return queryFactory
                 .select(Projections.constructor(
                         ArtistSearchRow.class,
@@ -41,7 +41,11 @@ public class ArtistProfileRepositoryImpl implements ArtistProfileRepositoryCusto
                         user.username,
                         artistProfile.majorName,
                         user.email,
-                        user.profileImgUrl
+                        user.profileImgUrl,
+                        artistProfile.region1DepthName,
+                        artistProfile.region2DepthName,
+                        artistProfile.region3DepthName,
+                        artistProfile.addressLabel
 
                 ))
                 .from(artistProfile)
@@ -51,7 +55,8 @@ public class ArtistProfileRepositoryImpl implements ArtistProfileRepositoryCusto
                         keywordCondition(req.keyword(), user, artistProfile),
                         instCategoryCondition(req.instCategory(), artistInstrument, artistProfile),
                         instIdsCondition(req.instIds(), artistInstrument, artistProfile),
-                        styleTagIdsCondition(req.styleTagIds(), artistStyleMap, artistProfile)
+                        styleTagIdsCondition(req.styleTagIds(), artistStyleMap, artistProfile),
+                        regionCondition(req, artistProfile)
                 )
                 .fetch();
     }
@@ -75,6 +80,28 @@ public class ArtistProfileRepositoryImpl implements ArtistProfileRepositoryCusto
                 .from(artistInstrument)
                 .where(artistInstrument.artistProfile.artistProfileId.in(artistProfileIds))
                 .fetch();
+    }
+
+    @Override
+    public List<SearchServiceRegionRow> findArtistServiceRegionRows(List<Long> artistProfileIds) {
+        if (artistProfileIds == null || artistProfileIds.isEmpty()) {
+            return List.of();
+        }
+
+        QArtistServiceRegion artistServiceRegion = QArtistServiceRegion.artistServiceRegion;
+
+        return queryFactory
+                .select(Projections.constructor(
+                        SearchServiceRegionRow.class,
+                        artistServiceRegion.artistProfile.artistProfileId,
+                        artistServiceRegion.region1DepthName,
+                        artistServiceRegion.region2DepthName,
+                        artistServiceRegion.region3DepthName
+                ))
+                .from(artistServiceRegion)
+                .where(artistServiceRegion.artistProfile.artistProfileId.in(artistProfileIds))
+                .fetch();
+
     }
 
     // 유저의 아티스트 요청 상황이 approved 인지(아티스트만 검색 가능해야함)
@@ -143,7 +170,7 @@ public class ArtistProfileRepositoryImpl implements ArtistProfileRepositoryCusto
             QArtistStyleMap artistStyleMap,
             QArtistProfile artistProfile
     ) {
-        if (styleTagIds == null) {
+        if (styleTagIds == null || styleTagIds.isEmpty()) {
             return null;
         }
 
@@ -155,5 +182,78 @@ public class ArtistProfileRepositoryImpl implements ArtistProfileRepositoryCusto
                         artistStyleMap.lessonStyleTag.lessonStyleTagId.in(styleTagIds)
                 )
                 .exists();
+    }
+
+    // 지역 검색
+    private BooleanExpression regionCondition(
+            ArtistSearchRequest req,
+            QArtistProfile artistProfile
+    ) {
+        String region1 = req.region1DepthName();
+        String region2 = req.region2DepthName();
+        String region3 = req.region3DepthName();
+
+        if (region1 == null || region1.trim().isEmpty()) {
+            return null;
+        }
+
+        BooleanExpression serviceRegionExpr =
+                serviceRegionCondition(region1, region2, region3, artistProfile);
+
+        BooleanExpression mainRegionExpr =
+                mainRegionCondition(region1, region2, region3, artistProfile);
+
+        if (serviceRegionExpr == null) return mainRegionExpr;
+        if (mainRegionExpr == null) return serviceRegionExpr;
+
+        return serviceRegionExpr.or(mainRegionExpr);
+    }
+
+    // 서비스 지역
+    private BooleanExpression serviceRegionCondition(
+            String region1,
+            String region2,
+            String region3,
+            QArtistProfile artistProfile
+    ) {
+        QArtistServiceRegion artistServiceRegion = QArtistServiceRegion.artistServiceRegion;
+
+        BooleanExpression condition = artistServiceRegion.artistProfile.eq(artistProfile)
+                .and(artistServiceRegion.region1DepthName.eq(region1));
+
+        if (region2 != null && !region2.trim().isEmpty()) {
+            condition = condition.and(artistServiceRegion.region2DepthName.eq(region2));
+        }
+
+        if (region3 != null && !region3.trim().isEmpty()) {
+            condition = condition.and(artistServiceRegion.region3DepthName.eq(region3));
+        }
+
+        return JPAExpressions
+                .selectOne()
+                .from(artistServiceRegion)
+                .where(condition)
+                .exists();
+    }
+
+
+    // 주 활동 지역(스튜디오)
+    private BooleanExpression mainRegionCondition(
+            String region1,
+            String region2,
+            String region3,
+            QArtistProfile artistProfile
+    ) {
+        BooleanExpression condition = artistProfile.region1DepthName.eq(region1);
+
+        if (region2 != null && !region2.trim().isEmpty()) {
+            condition = condition.and(artistProfile.region2DepthName.eq(region2));
+        }
+
+        if (region3 != null && !region3.trim().isEmpty()) {
+            condition = condition.and(artistProfile.region3DepthName.eq(region3));
+        }
+
+        return condition;
     }
 }

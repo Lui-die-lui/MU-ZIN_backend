@@ -8,6 +8,9 @@ public record ArtistSearchRequest(
         String keyword,
         InstrumentCategory instCategory,
         List<Long> instIds,
-        List<Long> styleTagIds
+        List<Long> styleTagIds,
+        String region1DepthName,
+        String region2DepthName,
+        String region3DepthName
 ) {
 }

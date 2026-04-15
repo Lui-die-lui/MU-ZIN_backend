@@ -355,6 +355,8 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
                 base.career(),
                 base.majorName(),
                 base.status(),
+                base.mainRegion(),
+                base.serviceRegions(),
                 base.instruments(),
                 styleTags
         );
