@@ -4,6 +4,7 @@ import com.muzin.mu.zin.dto.lesson.LessonCardRow;
 import com.muzin.mu.zin.entity.QArtistProfile;
 import com.muzin.mu.zin.entity.QUser;
 import com.muzin.mu.zin.entity.TimePart;
+import com.muzin.mu.zin.entity.artist.QArtistServiceRegion;
 import com.muzin.mu.zin.entity.artist.QArtistStyleMap;
 import com.muzin.mu.zin.entity.instrument.InstrumentCategory;
 import com.muzin.mu.zin.entity.instrument.QInstrument;
@@ -34,12 +35,15 @@ public class LessonRepositoryImpl implements LessonRepositoryCustom {
     public List<Lesson> searchPublicLessons(LessonSearchCond cond, Pageable pageable) {
         QLesson lesson = QLesson.lesson;
         QInstrument instrument = QInstrument.instrument;
+        QArtistProfile artistProfile = QArtistProfile.artistProfile;
         QLessonTimeSlot timeSlot = QLessonTimeSlot.lessonTimeSlot;
         QArtistStyleMap artistStyleMap = QArtistStyleMap.artistStyleMap;
+        QArtistServiceRegion artistServiceRegion = QArtistServiceRegion.artistServiceRegion;
 
         return queryFactory
                 .selectFrom(lesson)
                 .join(lesson.instrument, instrument).fetchJoin()
+                .join(lesson.artistProfile, artistProfile).fetchJoin()
                 .where(
                         lesson.deletedDt.isNull(),
                         lesson.status.eq(LessonStatus.ACTIVE),
@@ -48,6 +52,7 @@ public class LessonRepositoryImpl implements LessonRepositoryCustom {
                         styleTagCondition(cond.styleTagIds(), artistStyleMap, lesson),
                         instCategoryCondition(cond.instCategory(), lesson),
                         instIdsCondition(cond.instIds(), lesson),
+                        regionCondition(cond, artistServiceRegion, lesson),
                         timeSlotExistsCondition(cond, timeSlot, lesson)
                 )
                 .orderBy(lesson.lessonId.desc())
@@ -203,9 +208,9 @@ public class LessonRepositoryImpl implements LessonRepositoryCustom {
             builder.and(timeSlot.startDt.between(cond.fromDt(), cond.toDt()));
         }
 
-        NumberTemplate<Integer> isDow = Expressions.numberTemplate(
+        NumberTemplate<Integer> isoDow = Expressions.numberTemplate(
                 Integer.class,
-                "cast(function('date_part', 'isdow', {0}) as integer)",
+                "cast(function('date_part', 'isodow', {0}) as integer)",
                 timeSlot.startDt
         );
 
@@ -216,7 +221,7 @@ public class LessonRepositoryImpl implements LessonRepositoryCustom {
         );
 
         if (hasWeekdays) {
-            builder.and(isDow.in(cond.daysOfWeek()));
+            builder.and(isoDow.in(cond.daysOfWeek()));
         }
 
         if (hasTimeParts) {
@@ -256,5 +261,55 @@ public class LessonRepositoryImpl implements LessonRepositoryCustom {
 
     private BooleanExpression or(BooleanExpression base, BooleanExpression addition) {
         return base == null ? addition : base.or(addition);
+    }
+
+    // 대표지역 매칭 / 서비스 가능 지역 매칭
+    private BooleanExpression regionCondition(
+            LessonSearchCond cond,
+            QArtistServiceRegion artistServiceRegion,
+            QLesson lesson
+    ) {
+        boolean hasRegion1 = cond.region1DepthName() != null && !cond.region1DepthName().trim().isEmpty();
+        boolean hasRegion2 = cond.region2DepthName() != null && !cond.region2DepthName().trim().isEmpty();
+        boolean hasRegion3 = cond.region3DepthName() != null && !cond.region3DepthName().trim().isEmpty();
+
+        if (!hasRegion1) {
+            return null;
+        }
+
+        String region1 = cond.region1DepthName().trim();
+        String region2 = hasRegion2 ? cond.region2DepthName().trim() : null;
+        String region3 = hasRegion3 ? cond.region3DepthName().trim() : null;
+
+        BooleanExpression mainRegion =
+                lesson.artistProfile.region1DepthName.eq(region1);
+
+        if (region2 != null) {
+            mainRegion = mainRegion.and(lesson.artistProfile.region2DepthName.eq(region2));
+        }
+
+        if (region3 != null) {
+            mainRegion = mainRegion.and(lesson.artistProfile.region3DepthName.eq(region3));
+        }
+
+        BooleanBuilder serviceRegion = new BooleanBuilder();
+        serviceRegion.and(artistServiceRegion.artistProfile.eq(lesson.artistProfile));
+        serviceRegion.and(artistServiceRegion.region1DepthName.eq(region1));
+
+        if (region2 != null) {
+            serviceRegion.and(artistServiceRegion.region2DepthName.eq(region2));
+        }
+
+        if (region3 != null) {
+            serviceRegion.and(artistServiceRegion.region3DepthName.eq(region3));
+        }
+
+        BooleanExpression serviceRegionExists = JPAExpressions
+                .selectOne()
+                .from(artistServiceRegion)
+                .where(serviceRegion)
+                .exists();
+
+        return mainRegion.or(serviceRegionExists);
     }
 }

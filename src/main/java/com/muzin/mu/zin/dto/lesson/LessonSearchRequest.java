@@ -17,6 +17,11 @@ public record LessonSearchRequest(
         List<Long> instIds,
         LessonSort sort,
 
+        // 지역 검색 조건
+        String region1DepthName,
+        String region2DepthName,
+        String region3DepthName,
+
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
         LocalDateTime from,
 

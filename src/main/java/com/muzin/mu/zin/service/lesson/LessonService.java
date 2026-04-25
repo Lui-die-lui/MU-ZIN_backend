@@ -4,6 +4,7 @@ import com.muzin.mu.zin.common.TimeDefaults;
 import com.muzin.mu.zin.dto.ApiRespDto;
 import com.muzin.mu.zin.dto.artist.ArtistSummaryResponse;
 import com.muzin.mu.zin.dto.lesson.*;
+import com.muzin.mu.zin.dto.region.SearchMainRegionSummary;
 import com.muzin.mu.zin.entity.ArtistProfile;
 import com.muzin.mu.zin.entity.TimePart;
 import com.muzin.mu.zin.entity.User;
@@ -344,6 +345,11 @@ public class LessonService {
                 req.styleTagIds(),
                 req.instCategory(),
                 req.instIds(),
+
+                req.region1DepthName(),
+                req.region2DepthName(),
+                req.region3DepthName(),
+
                 effectiveFrom,
                 effectiveTo,
                 req.daysOfWeek(),
@@ -360,7 +366,18 @@ public class LessonService {
                         l.getPrice(),
                         l.getDurationMin(),
                         l.getMode(),
-                        l.getStatus()
+                        l.getStatus(),
+
+                        l.getInstrument().getInstId(),
+                        l.getInstrument().getInstName(),
+                        l.getInstrument().getCategory(),
+
+                        new SearchMainRegionSummary(
+                                l.getArtistProfile().getRegion1DepthName(),
+                                l.getArtistProfile().getRegion2DepthName(),
+                                l.getArtistProfile().getRegion3DepthName(),
+                                l.getArtistProfile().getAddressLabel()
+                        )
                 ))
                 .toList();
 

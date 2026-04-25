@@ -11,7 +11,7 @@ public record NotificationResponse(
         String title,
         String content,
         NotificationRefType refType,
-        Long lefId,
+        Long refId,
         boolean isRead,
         LocalDateTime createDt
 ) {
