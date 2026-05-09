@@ -11,4 +11,6 @@ public interface ReviewReplyRepository extends JpaRepository<ReviewReply, Long> 
     boolean existsByReview_ReviewIdAndDeleteDtIsNull(Long reviewId);
 
     Optional<ReviewReply> findByReview_ReviewIdAndDeleteDtIsNull(Long reviewId);
+
+    Optional<ReviewReply> findByReviewReplyIdAndDeleteDtIsNull(Long reviewReplyId);
 }
