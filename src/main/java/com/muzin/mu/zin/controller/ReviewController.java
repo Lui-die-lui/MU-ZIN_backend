@@ -2,6 +2,7 @@ package com.muzin.mu.zin.controller;
 
 import com.muzin.mu.zin.dto.Review.ReviewCreateRequest;
 import com.muzin.mu.zin.dto.Review.ReviewKeywordResponse;
+import com.muzin.mu.zin.dto.Review.ReviewUpdateRequest;
 import com.muzin.mu.zin.security.model.PrincipalUser;
 import com.muzin.mu.zin.service.Review.ReviewService;
 import jakarta.validation.Valid;
@@ -38,5 +39,19 @@ public class ReviewController {
         Long reviewId = reviewId = reviewService.createReview(loginUserId, req);
 
         return ResponseEntity.ok(Map.of("reviewId", reviewId));
+    }
+
+    // 리뷰 수정
+    @PutMapping("/{reviewId}")
+    public ResponseEntity<Map<String, Long>> updateReview(
+            @AuthenticationPrincipal PrincipalUser principalUser,
+            @PathVariable Long reviewId,
+            @Valid @RequestBody ReviewUpdateRequest req
+            ) {
+        Long loginUserId = principalUser.getUserId();
+
+        Long updateReviewId = reviewService.updateReview(loginUserId, reviewId, req);
+
+        return ResponseEntity.ok(Map.of("reviewId", updateReviewId));
     }
 }

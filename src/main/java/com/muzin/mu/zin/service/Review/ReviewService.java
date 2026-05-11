@@ -2,6 +2,7 @@ package com.muzin.mu.zin.service.Review;
 
 import com.muzin.mu.zin.dto.Review.ReviewCreateRequest;
 import com.muzin.mu.zin.dto.Review.ReviewKeywordResponse;
+import com.muzin.mu.zin.dto.Review.ReviewUpdateRequest;
 import com.muzin.mu.zin.entity.ArtistProfile;
 import com.muzin.mu.zin.entity.Review.Review;
 import com.muzin.mu.zin.entity.Review.ReviewKeyword;
@@ -79,6 +80,33 @@ public class ReviewService {
         return saveReview.getReviewId();
     }
 
+    // 리뷰 수정
+    @Transactional
+    public Long updateReview(Long loginUserId, Long reviewId, ReviewUpdateRequest req) {
+        Review review = reviewRepository.findByReviewIdAndDeleteDtIsNull(reviewId)
+                .orElseThrow(() -> new IllegalArgumentException("리뷰를 찾을 수 없습니다."));
+
+        if (!Objects.equals(review.getReviewUser().getUserId(), loginUserId)) {
+            throw new IllegalArgumentException("본인이 작성한 리뷰만 수정할 수 있습니다.");
+        }
+
+        // 정책 선택 사항 - 작성 후 7일 이내 수정 가능하게 할 거면 아래 검증 사용
+        validateReviewEditable(review);
+
+        List<ReviewKeyword> keywords = validateAndGetKeywords(req.keywordIds());
+
+        review.update(req.rating(), normalizeContent(req.content()));
+
+        // 기존 키워드 매핑 삭제
+        reviewKeywordMapRepository.deleteAllByReview_ReviewId(reviewId);
+        reviewKeywordMapRepository.flush();
+
+        // 새 키워드 매핑 저장
+        saveReviewKeywordMaps(review, keywords);
+
+        return review.getReviewId();
+    }
+
     // 리뷰 키워드 반환타입
     private ReviewKeywordResponse toKeywordResp(ReviewKeyword keyword) {
         return new ReviewKeywordResponse(
@@ -135,6 +163,13 @@ public class ReviewService {
         }
     }
 
+    // 리뷰 수정 가능 기간 검증
+    private void validateReviewEditable(Review review) {
+        if (review.getCreateDt().plusDays(7).isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("리뷰 수정 가능 기간이 지났습니다.");
+        }
+    }
+
     // 리뷰 - 키워드 매핑 저장
     private void saveReviewKeywordMaps(Review review, List<ReviewKeyword> keywords) {
         if (keywords.isEmpty()) {
@@ -150,6 +185,8 @@ public class ReviewService {
 
         reviewKeywordMapRepository.saveAll(maps);
     }
+
+
 
     // TODO: 현재 아래 부분에서 확인 - 예약이 레슨을 가지고 있는지(아니면 TimeSlot에서 꺼내야함)
     // 완료일시 꺼내 쓰기

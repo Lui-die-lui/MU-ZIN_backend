@@ -24,7 +24,7 @@ import java.time.LocalDateTime;
         indexes = {
                 @Index(name = "idx_review_lesson_id", columnList = "lesson_id"),
                 @Index(name = "idx_review_artist_profile_id", columnList = "artist_profile_id"),
-                @Index(name = "idx_review_reviewer_user_id", columnList = "reviewer_user_id")
+                @Index(name = "idx_review_review_user_id", columnList = "review_user_id")
         }
 )
 @Getter
@@ -52,7 +52,7 @@ public class Review extends BaseTimeEntity {
     private ArtistProfile artistProfile;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reviewer_user_id", nullable = false)
+    @JoinColumn(name = "review_user_id", nullable = false)
     private User reviewUser;
 
     @Column(nullable = false)
