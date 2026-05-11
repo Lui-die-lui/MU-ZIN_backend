@@ -1,12 +1,11 @@
 package com.muzin.mu.zin.service.Review;
 
-import com.muzin.mu.zin.dto.Review.ReviewCreateRequest;
-import com.muzin.mu.zin.dto.Review.ReviewKeywordResponse;
-import com.muzin.mu.zin.dto.Review.ReviewUpdateRequest;
+import com.muzin.mu.zin.dto.Review.*;
 import com.muzin.mu.zin.entity.ArtistProfile;
 import com.muzin.mu.zin.entity.Review.Review;
 import com.muzin.mu.zin.entity.Review.ReviewKeyword;
 import com.muzin.mu.zin.entity.Review.ReviewKeywordMap;
+import com.muzin.mu.zin.entity.Review.ReviewReply;
 import com.muzin.mu.zin.entity.lesson.Lesson;
 import com.muzin.mu.zin.entity.reservation.LessonReservation;
 import com.muzin.mu.zin.entity.reservation.ReservationStatus;
@@ -107,6 +106,47 @@ public class ReviewService {
         return review.getReviewId();
     }
 
+    // 리뷰 삭제(soft delete)
+    @Transactional
+    public void deleteReview(Long loginUserId, Long reviewId) {
+        Review review = reviewRepository.findByReviewIdAndDeleteDtIsNull(reviewId)
+                .orElseThrow(() -> new IllegalArgumentException("리뷰를 찾을 수 없습니다."));
+
+        if (!Objects.equals(review.getReviewUser().getUserId(), loginUserId)) {
+            throw new IllegalArgumentException("본인이 작성한 리뷰만 삭제할 수 있습니다.");
+        }
+
+        review.softDelete();
+
+        reviewReplyRepository.findByReview_ReviewIdAndDeleteDtIsNull(reviewId)
+                .ifPresent(ReviewReply::softDelete);
+    }
+
+    // 내가 작성한 리뷰 목록
+    public List<ReviewResponse> getMyReviews(Long loginUserId) {
+        return reviewRepository.findAllByReviewUser_UserIdAndDeleteDtIsNullOrderByCreateDtDesc(loginUserId)
+                .stream()
+                .map(this::toReviewResp)
+                .toList();
+    }
+
+    // 특정 레슨의 리뷰 목록
+    public List<ReviewResponse> getLessonReviews(Long lessonId) {
+        return reviewRepository.findAllByLesson_LessonIdAndDeleteDtIsNullOrderByCreateDtDesc(lessonId)
+                .stream()
+                .map(this::toReviewResp)
+                .toList();
+    }
+
+    // 특정 아티스트가 받은 리뷰 목록
+    public List<ReviewResponse> getArtistReviews(Long artistProfileId) {
+        return reviewRepository.findAllByArtistProfile_ArtistProfileIdAndDeleteDtIsNullOrderByCreateDtDesc(artistProfileId)
+                .stream()
+                .map(this::toReviewResp)
+                .toList();
+    }
+
+
     // 리뷰 키워드 반환타입
     private ReviewKeywordResponse toKeywordResp(ReviewKeyword keyword) {
         return new ReviewKeywordResponse(
@@ -205,5 +245,50 @@ public class ReviewService {
         }
 
         return content.trim();
+    }
+
+    // 리뷰 반환
+    private ReviewResponse toReviewResp(Review review) {
+
+        // 키워드
+        List<ReviewKeywordResponse> keywords = reviewKeywordMapRepository
+                .findAllByReview_ReviewId(review.getReviewId())
+                .stream()
+                .map(ReviewKeywordMap::getReviewKeyword)
+                .map(this::toKeywordResp)
+                .toList();
+
+        ReviewReplyResponse reply = reviewReplyRepository
+                .findByReview_ReviewIdAndDeleteDtIsNull(review.getReviewId())
+                .map(this::toReviewReplyResp)
+                .orElse(null);
+
+        return new ReviewResponse(
+                review.getReviewId(),
+                review.getReservation().getReservationId(),
+                review.getLesson().getLessonId(),
+                review.getLesson().getTitle(),
+                review.getArtistProfile().getArtistProfileId(),
+                review.getArtistProfile().getUser().getUsername(),
+                review.getReviewUser().getUserId(),
+                review.getReviewUser().getUsername(),
+                review.getRating(),
+                review.getContent(),
+                keywords,
+                reply,
+                review.getCreateDt(),
+                review.getUpdateDt()
+        );
+    }
+
+    private ReviewReplyResponse toReviewReplyResp(ReviewReply reply) {
+        return new ReviewReplyResponse(
+                reply.getReviewReplyId(),
+                reply.getArtistProfile().getArtistProfileId(),
+                reply.getArtistProfile().getUser().getUsername(),
+                reply.getContent(),
+                reply.getCreateDt(),
+                reply.getUpdateDt()
+        );
     }
 }
