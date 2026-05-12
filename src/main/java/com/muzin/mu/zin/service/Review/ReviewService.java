@@ -146,6 +146,33 @@ public class ReviewService {
                 .toList();
     }
 
+    // 리뷰 답글 작성(아티스트)
+    public Long createReviewReply(Long loginUserId, ReviewReplyCreateRequest req) {
+        Review review = reviewRepository.findByReviewIdAndDeleteDtIsNull(req.reviewId())
+                .orElseThrow(() -> new IllegalArgumentException("리뷰를 찾을 수 없습니다."));
+
+        ArtistProfile artistProfile = review.getArtistProfile();
+
+        validateArtistOwner(loginUserId, artistProfile);
+
+        boolean alreadyExists = reviewReplyRepository
+                .existsByReview_ReviewIdAndDeleteDtIsNull(req.reviewId());
+
+        if (alreadyExists) {
+            throw new IllegalArgumentException("이미 해당 리뷰에 답글을 작성했습니다.");
+        }
+
+        ReviewReply reply = ReviewReply.builder()
+                .review(review)
+                .artistProfile(artistProfile)
+                .content(req.content())
+                .build();
+
+        ReviewReply saveReply = reviewReplyRepository.save(reply);
+
+        return saveReply.getReviewReplyId();
+    }
+
 
     // 리뷰 키워드 반환타입
     private ReviewKeywordResponse toKeywordResp(ReviewKeyword keyword) {
@@ -181,6 +208,8 @@ public class ReviewService {
 
         return keywords;
     }
+
+    //
 
     // 리뷰 작성 가능 예약 검증
     private void validateReviewWritable(Long loginUserId, LessonReservation reservation) {
@@ -226,6 +255,12 @@ public class ReviewService {
         reviewKeywordMapRepository.saveAll(maps);
     }
 
+    // 아티스트 본인 검증
+    private void validateArtistOwner(Long loginUserId, ArtistProfile artistProfile) {
+        if (!Objects.equals(artistProfile.getUser().getUserId(), loginUserId)) {
+            throw new IllegalArgumentException("해당 아티스트만 답글을 작성하거나 수정할 수 있습니다.");
+        }
+    }
 
 
     // TODO: 현재 아래 부분에서 확인 - 예약이 레슨을 가지고 있는지(아니면 TimeSlot에서 꺼내야함)

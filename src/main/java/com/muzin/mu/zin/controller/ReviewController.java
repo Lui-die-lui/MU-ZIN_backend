@@ -1,9 +1,6 @@
 package com.muzin.mu.zin.controller;
 
-import com.muzin.mu.zin.dto.Review.ReviewCreateRequest;
-import com.muzin.mu.zin.dto.Review.ReviewKeywordResponse;
-import com.muzin.mu.zin.dto.Review.ReviewResponse;
-import com.muzin.mu.zin.dto.Review.ReviewUpdateRequest;
+import com.muzin.mu.zin.dto.Review.*;
 import com.muzin.mu.zin.security.model.PrincipalUser;
 import com.muzin.mu.zin.service.Review.ReviewService;
 import jakarta.validation.Valid;
@@ -99,5 +96,18 @@ public class ReviewController {
         List<ReviewResponse> reviews = reviewService.getArtistReviews(artistProfileId);
 
         return ResponseEntity.ok(reviews);
+    }
+
+    // 리뷰 답글 작성(아티스트)
+    @PostMapping("/replies")
+    public ResponseEntity<Map<String, Long>> createReviewReply(
+            @AuthenticationPrincipal PrincipalUser principalUser,
+            @Valid @RequestBody ReviewReplyCreateRequest req
+            ) {
+        Long loginUserId = principalUser.getUserId();
+
+        Long reviewReplyId = reviewService.createReviewReply(loginUserId, req);
+
+        return ResponseEntity.ok(Map.of("reviewReplyId", reviewReplyId));
     }
 }
