@@ -110,4 +110,32 @@ public class ReviewController {
 
         return ResponseEntity.ok(Map.of("reviewReplyId", reviewReplyId));
     }
+
+    // 리뷰 답글 수정(아티스트)
+    @PutMapping("/replies/{reviewReplyId}")
+    public ResponseEntity<Map<String, Long>> updateReviewReply(
+            @AuthenticationPrincipal PrincipalUser principalUser,
+            @PathVariable Long reviewReplyId,
+            @Valid @RequestBody ReviewReplyUpdateRequest req
+    ) {
+        Long loginUserId = principalUser.getUserId();
+
+        Long updateReplyId = reviewService.updateReviewReply(loginUserId, reviewReplyId, req);
+
+        return ResponseEntity.ok(Map.of("reviewReplyId", updateReplyId));
+    }
+
+    // 리뷰 답글 삭제(아티스트) = soft delete
+    @DeleteMapping("/replies/{reviewReplyId}")
+    public ResponseEntity<Void> deleteReviewReply(
+            @AuthenticationPrincipal PrincipalUser principalUser,
+            @PathVariable Long reviewReplyId
+    ) {
+        Long loginUserId = principalUser.getUserId();
+
+        reviewService.deleteReviewReply(loginUserId, reviewReplyId);
+
+        return ResponseEntity.noContent().build();
+    }
+
 }

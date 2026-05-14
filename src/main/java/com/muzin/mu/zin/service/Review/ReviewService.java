@@ -173,6 +173,30 @@ public class ReviewService {
         return saveReply.getReviewReplyId();
     }
 
+    // 리뷰 답글 수정(아티스트)
+    @Transactional
+    public Long updateReviewReply(Long loginUserId, Long reviewReplyId, ReviewReplyUpdateRequest req) {
+        ReviewReply reply = reviewReplyRepository.findByReviewReplyIdAndDeleteDtIsNull(reviewReplyId)
+                .orElseThrow(() -> new IllegalArgumentException("리뷰 답글을 찾을 수 없습니다."));
+
+        validateArtistOwner(loginUserId, reply.getArtistProfile());
+
+        reply.update(req.content());
+
+        return  reply.getReviewReplyId();
+    }
+
+    // 리뷰 답글 삭제(아티스트) = soft delete
+    @Transactional
+    public void deleteReviewReply(Long loginUserId, Long reviewReplyId) {
+        ReviewReply reply = reviewReplyRepository.findByReviewReplyIdAndDeleteDtIsNull(reviewReplyId)
+                .orElseThrow(() -> new IllegalArgumentException("리뷰 답글을 찾을 수 없습니다."));
+
+        validateArtistOwner(loginUserId, reply.getArtistProfile());
+
+        reply.softDelete();
+    }
+
 
     // 리뷰 키워드 반환타입
     private ReviewKeywordResponse toKeywordResp(ReviewKeyword keyword) {
