@@ -8,6 +8,8 @@ import com.muzin.mu.zin.repository.artist.ArtistProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Map;
@@ -22,7 +24,10 @@ public class ArtistSearchService {
 
     @Transactional(readOnly = true)
     public List<ArtistSearchResponse> searchArtists(ArtistSearchRequest req) {
-        List<ArtistSearchRow> artistRows = artistProfileRepository.searchArtistRows(req);
+        int page = req.page() == null ? 0 : Math.max(req.page(), 0);
+        int size = req.size() == null ? 200 : Math.min(Math.max(req.size(), 1), 100);
+        Pageable pageable = PageRequest.of(page, size);
+        List<ArtistSearchRow> artistRows = artistProfileRepository.searchArtistRows(req, pageable);
 
         if (artistRows.isEmpty()) {
             return List.of();
@@ -72,7 +77,6 @@ public class ArtistSearchService {
                         row.artistProfileId(),
                         row.username(),
                         row.majorName(),
-                        row.email(),
                         row.profileImgUrl(),
                         new SearchMainRegionSummary(
                                 row.region1DepthName(),

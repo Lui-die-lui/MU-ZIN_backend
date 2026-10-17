@@ -42,6 +42,9 @@ public interface LessonTimeSlotRepository extends JpaRepository<LessonTimeSlot, 
     // 레슨 슬롯 총량
     int countByLesson_LessonId(Long lessonId);
 
+    // 앞으로 예약 가능한 시간 수 (내 레슨 목록 표시 + 자동 비공개 판단)
+    long countByLesson_LessonIdAndStatusAndStartDtAfter(Long lessonId, TimeSlotStatus status, LocalDateTime after);
+
 
     // 특정 레슨이 특정 status를 가지고 있는지 - booked, open 같은
     boolean existsByLesson_LessonIdAndStatus(Long lessonId, TimeSlotStatus status);

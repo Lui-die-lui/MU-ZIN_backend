@@ -9,7 +9,6 @@ public record ArtistSearchResponse(
         Long artistProfileId,
         String username,
         String majorName,
-        String email,
         String profileImgUrl,
         SearchMainRegionSummary mainRegion,
         List<ServiceRegionResponse> serviceRegions,

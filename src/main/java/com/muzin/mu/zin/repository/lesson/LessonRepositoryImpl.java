@@ -1,6 +1,8 @@
 package com.muzin.mu.zin.repository.lesson;
 
+import com.muzin.mu.zin.common.TimeDefaults;
 import com.muzin.mu.zin.dto.lesson.LessonCardRow;
+import com.muzin.mu.zin.entity.ArtistStatus;
 import com.muzin.mu.zin.entity.QArtistProfile;
 import com.muzin.mu.zin.entity.QUser;
 import com.muzin.mu.zin.entity.TimePart;
@@ -39,21 +41,25 @@ public class LessonRepositoryImpl implements LessonRepositoryCustom {
         QLessonTimeSlot timeSlot = QLessonTimeSlot.lessonTimeSlot;
         QArtistStyleMap artistStyleMap = QArtistStyleMap.artistStyleMap;
         QArtistServiceRegion artistServiceRegion = QArtistServiceRegion.artistServiceRegion;
+        QUser artistUser = QUser.user;
 
         return queryFactory
                 .selectFrom(lesson)
                 .join(lesson.instrument, instrument).fetchJoin()
                 .join(lesson.artistProfile, artistProfile).fetchJoin()
+                .join(artistProfile.user, artistUser)
                 .where(
                         lesson.deletedDt.isNull(),
                         lesson.status.eq(LessonStatus.ACTIVE),
+                        approvedArtist(artistUser),
                         modeCondition(cond.mode(), lesson),
                         keywordCondition(cond.keyword(), lesson),
                         styleTagCondition(cond.styleTagIds(), artistStyleMap, lesson),
                         instCategoryCondition(cond.instCategory(), lesson),
                         instIdsCondition(cond.instIds(), lesson),
                         regionCondition(cond, artistServiceRegion, lesson),
-                        timeSlotExistsCondition(cond, timeSlot, lesson)
+                        timeSlotExistsCondition(cond, timeSlot, lesson),
+                        closingPolicyVisible(lesson)
                 )
                 .orderBy(lesson.lessonId.desc())
                 .offset(pageable.getOffset())
@@ -102,7 +108,9 @@ public class LessonRepositoryImpl implements LessonRepositoryCustom {
                 .where(
                         lesson.artistProfile.artistProfileId.eq(artistProfileId),
                         lesson.deletedDt.isNull(),
-                        lesson.status.eq(LessonStatus.ACTIVE)
+                        lesson.status.eq(LessonStatus.ACTIVE),
+                        approvedArtist(lesson.artistProfile.user),
+                        closingPolicyVisible(lesson)
                 )
                 .orderBy(lesson.lessonId.desc())
                 .fetch();
@@ -126,11 +134,31 @@ public class LessonRepositoryImpl implements LessonRepositoryCustom {
                         lesson.lessonId.eq(lessonId),
                         artistProfile.artistProfileId.eq(artistProfileId),
                         lesson.deletedDt.isNull(),
-                        lesson.status.eq(LessonStatus.ACTIVE)
+                        lesson.status.eq(LessonStatus.ACTIVE),
+                        approvedArtist(user)
                 )
                 .fetchOne();
 
         return Optional.ofNullable(result);
+    }
+
+    // "시간이 없으면 자동 비공개" 레슨은 앞으로 예약 가능한(OPEN) 시간이 하나라도 있을 때만 노출
+    // (예전엔 설정만 저장되고 어디에서도 적용되지 않았음. 상태값을 바꾸지 않고 조회 시점에 판단해서
+    //  시간을 다시 추가하면 별도 처리 없이 바로 다시 노출됨)
+    private BooleanExpression closingPolicyVisible(QLesson lesson) {
+        QLessonTimeSlot openSlot = new QLessonTimeSlot("openSlot");
+        return lesson.closingPolicy.eq(LessonClosingPolicy.KEEP_OPEN_FOR_REQUEST)
+                .or(JPAExpressions.selectOne()
+                        .from(openSlot)
+                        .where(openSlot.lesson.eq(lesson),
+                                openSlot.status.eq(TimeSlotStatus.OPEN),
+                                openSlot.startDt.after(TimeDefaults.nowKst()))
+                        .exists());
+    }
+
+    // 승인된 아티스트의 레슨만 공개 (신청 중/반려/미신청 상태에서 만든 레슨 노출 방지)
+    private BooleanExpression approvedArtist(QUser artistUser) {
+        return artistUser.artistStatus.eq(ArtistStatus.APPROVED);
     }
 
     // 레슨 모드

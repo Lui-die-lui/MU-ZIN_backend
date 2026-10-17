@@ -6,6 +6,8 @@ import com.muzin.mu.zin.dto.artist.ArtistSummaryResponse;
 import com.muzin.mu.zin.dto.lesson.*;
 import com.muzin.mu.zin.dto.region.SearchMainRegionSummary;
 import com.muzin.mu.zin.entity.ArtistProfile;
+import com.muzin.mu.zin.entity.ArtistStatus;
+import com.muzin.mu.zin.exception.ApiException;
 import com.muzin.mu.zin.entity.TimePart;
 import com.muzin.mu.zin.entity.User;
 import com.muzin.mu.zin.entity.instrument.Instrument;
@@ -15,6 +17,8 @@ import com.muzin.mu.zin.repository.ArtistInstrumentRepository;
 import com.muzin.mu.zin.repository.artist.ArtistProfileRepository;
 import com.muzin.mu.zin.repository.InstrumentRepository;
 import com.muzin.mu.zin.repository.lesson.*;
+import com.muzin.mu.zin.entity.reservation.ReservationStatus;
+import com.muzin.mu.zin.policy.TimeSlotPolicy;
 import com.muzin.mu.zin.security.model.PrincipalUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -38,6 +42,7 @@ public class LessonService {
     private final ArtistProfileRepository artistProfileRepository;
     private final ArtistInstrumentRepository artistInstrumentRepository;
     private final InstrumentRepository instrumentRepository;
+    private final LessonReservationRepository reservationRepository;
 
     // 새 레슨 만들기
     @Transactional
@@ -93,22 +98,37 @@ public class LessonService {
             throw new IllegalArgumentException("삭제된 레슨을 수정할 수 없습니다.");
         }
 
-        // 예약이 하나라도 있는지 체크(예약 되어있으면 수정 불가능하게 해야하는 부분이 있어서)
-        boolean hasBookedSlot = lessonTimeSlotRepository.existsByLesson_LessonIdAndStatus(
-                lessonId,
-                TimeSlotStatus.BOOKED);
-
-        if (hasBookedSlot) {
+        // 진행 중인 예약(요청 대기 포함)이 있으면 핵심 정보(제목/방식/가격/시간/악기) 수정 불가
+        // (예전엔 확정된 예약만 봐서, 요청 대기 중에 가격·시간을 바꿀 수 있었음)
+        long activeReservations = countActiveReservations(lessonId);
+        if (activeReservations > 0) {
             boolean tryingToChangeCore =
-                    req.title() != null ||
-                    req.mode() != null ||
-                    req.price() != null ||
-                    req.durationMin() != null ||
-                    req.instId() != null;
+                    (req.title() != null && !req.title().equals(lesson.getTitle())) ||
+                    (req.mode() != null && req.mode() != lesson.getMode()) ||
+                    (req.price() != null && !req.price().equals(lesson.getPrice())) ||
+                    (req.durationMin() != null && !req.durationMin().equals(lesson.getDurationMin())) ||
+                    (req.instId() != null && !req.instId().equals(lesson.getInstrument().getInstId()));
 
             if (tryingToChangeCore) {
-                throw new IllegalArgumentException("예약된 슬롯이 있는 레슨은 수정이 불가능합니다.");
+                throw ApiException.conflict("LESSON_LOCKED",
+                        "진행 중인 예약(요청 대기 포함)이 있어 제목·방식·가격·수업 시간·악기는 수정할 수 없어요.");
             }
+        }
+
+        // 수업 시간이 바뀌면 아직 지나지 않은 시간들의 종료 시각도 맞춤 (겹치게 되면 거부)
+        if (req.durationMin() != null && !req.durationMin().equals(lesson.getDurationMin())) {
+            List<LessonTimeSlot> futureSlots = lessonTimeSlotRepository
+                    .findAllByLesson_LessonIdAndStartDtBetweenOrderByStartDtAsc(
+                            lessonId, TimeDefaults.nowKst(), TimeDefaults.nowKst().plusYears(1));
+
+            LocalDateTime[] overlap = TimeSlotPolicy.findOverlapAmong(
+                    futureSlots.stream().map(LessonTimeSlot::getStartDt).toList(), req.durationMin());
+            if (overlap != null) {
+                throw ApiException.conflict("SLOT_OVERLAP",
+                        "수업 시간을 " + req.durationMin() + "분으로 바꾸면 " + TimeSlotPolicy.format(overlap[0])
+                                + " 시간과 " + TimeSlotPolicy.format(overlap[1]) + " 시간이 겹쳐요. 겹치는 시간을 먼저 정리해주세요.");
+            }
+            futureSlots.forEach(slot -> slot.changeDuration(req.durationMin()));
         }
 
         // 악기 변경(예약 없을 때만 여기까지 옴)
@@ -141,28 +161,7 @@ public class LessonService {
             lesson.changeStatus(req.status());
         }
 
-        // 스타일 태그도 같이 내려주기
-        List<LessonStyleTagResponse> styleTags = loadStyleTags(lesson.getLessonId());
-
-        ArtistLessonResponse resp = new ArtistLessonResponse(
-                lesson.getLessonId(),
-                lesson.getTitle(),
-                lesson.getInstrument().getInstId(),
-                lesson.getDescription(),
-                lesson.getRequirementText(),
-                lesson.getPrice(),
-                lesson.getDurationMin(),
-                lesson.getMode(),
-                lesson.getStatus(),
-                styleTags,
-                lesson.getClosingPolicy(),
-                lesson.getCreateDt(),
-                lesson.getUpdateDt()
-
-        );
-
-
-        return new ApiRespDto<>("success", "레슨이 수정되었습니다.", resp);
+        return new ApiRespDto<>("success", "레슨이 수정되었습니다.", toArtistResponse(lesson));
     }
 
     // soft delete
@@ -179,13 +178,10 @@ public class LessonService {
             return new ApiRespDto<>("success", "이미 삭제된 레슨입니다.", null);
         }
 
-        // 예약(BOOKED) 타임슬롯 있으면 삭제 금지(비활성은 가능함)
-        boolean hasBookedSlot = lessonTimeSlotRepository.existsByLesson_LessonIdAndStatus(
-                lessonId, TimeSlotStatus.BOOKED
-        );
-
-        if (hasBookedSlot) {
-            throw new IllegalArgumentException("예약된 시간이 있는 레슨은 삭제할 수 없습니다.");
+        // 진행 중인 예약(요청 대기 포함)이 있으면 삭제 금지 (비공개 전환은 가능)
+        if (countActiveReservations(lessonId) > 0) {
+            throw ApiException.conflict("LESSON_LOCKED",
+                    "진행 중인 예약(요청 대기 포함)이 있는 레슨은 삭제할 수 없어요. 비공개로 전환하면 새 예약을 막을 수 있어요.");
         }
 
         lesson.markDeleted(); // INACTIVE 상태로 바꿔줌
@@ -205,33 +201,7 @@ public class LessonService {
         List<Lesson> lessons = lessonRepository
                 .findAllByArtistProfile_ArtistProfileIdAndDeletedDtIsNullOrderByLessonIdDesc(profile.getArtistProfileId());
 
-        List<ArtistLessonResponse> resp = lessons.stream().map(l-> {
-            List<LessonStyleTagResponse> styleTags = lessonStyleMapRepository
-                    .findAllByLesson_LessonId(l.getLessonId())
-                    .stream()
-                    .map(m->new LessonStyleTagResponse(
-                            m.getLessonStyleTag().getLessonStyleTagId(),
-                            m.getLessonStyleTag().getStyleName()
-                    ))
-                    .toList();
-
-
-            return new ArtistLessonResponse(
-                    l.getLessonId(),
-                    l.getTitle(),
-                    l.getInstrument().getInstId(),
-                    l.getDescription(),
-                    l.getRequirementText(),
-                    l.getPrice(),
-                    l.getDurationMin(),
-                    l.getMode(),
-                    l.getStatus(),
-                    styleTags,
-                    l.getClosingPolicy(),
-                    l.getCreateDt(),
-                    l.getUpdateDt()
-            );
-        }).toList();
+        List<ArtistLessonResponse> resp = lessons.stream().map(this::toArtistResponse).toList();
 
 
         return new ApiRespDto<>("success", "", resp);
@@ -262,27 +232,7 @@ public class LessonService {
 //                        m.getLessonStyleTag().getStyleName()
 //                ))
 //                .toList();
-        List<LessonStyleTagResponse> styleTags = loadStyleTags(lesson.getLessonId());
-
-        Long instId = lesson.getInstrument().getInstId();
-
-        ArtistLessonResponse resp = new ArtistLessonResponse(
-                lesson.getLessonId(),
-                lesson.getTitle(),
-                instId,
-                lesson.getDescription(),
-                lesson.getRequirementText(),
-                lesson.getPrice(),
-                lesson.getDurationMin(),
-                lesson.getMode(),
-                lesson.getStatus(),
-                styleTags,
-                lesson.getClosingPolicy(),
-                lesson.getCreateDt(),
-                lesson.getUpdateDt()
-        );
-
-        return new ApiRespDto<>("success","조회 완료", resp);
+        return new ApiRespDto<>("success","조회 완료", toArtistResponse(lesson));
     }
 
     // 레슨 검색(레슨 리스트)
@@ -333,11 +283,18 @@ public class LessonService {
         LocalDateTime effectiveTo = null;
 
         if (useTimeFilter) {
+            // from/to 각각 비어 있으면 기본값 (지금 ~ 90일 뒤). 이전엔 to 대신 from을 검사해서 from만 주면 to가 null이 됐음
             effectiveFrom = (req.from() == null) ? TimeDefaults.nowKst() : req.from();
-            effectiveTo = (req.from() == null) ? effectiveFrom.plusDays(90) : req.to();
+            effectiveTo = (req.to() == null) ? effectiveFrom.plusDays(90) : req.to();
+
+            if (effectiveTo.isBefore(effectiveFrom)) {
+                throw new IllegalArgumentException("검색 종료일은 시작일 이후여야 합니다.");
+            }
         }
 
-        Pageable pageable = PageRequest.of(0, 200, toSort(sort));
+        int page = req.page() == null ? 0 : Math.max(req.page(), 0);
+        int size = req.size() == null ? 200 : Math.min(Math.max(req.size(), 1), 100);
+        Pageable pageable = PageRequest.of(page, size, toSort(sort));
 
         LessonSearchCond cond = new LessonSearchCond(
                 keyword,
@@ -389,15 +346,20 @@ public class LessonService {
     public ApiRespDto<LessonDetailResponse> getPublicLessonDetail(Long lessonId) {
 
         Lesson lesson = lessonRepositoryCustom.findPublicDetailByIdDsl(lessonId)
-                .orElseThrow(() -> new IllegalArgumentException("레슨이 없습니다."));
+                .orElseThrow(() -> ApiException.notFound("레슨이 없습니다."));
 
         if (lesson.isDeleted()) {
-            throw new IllegalArgumentException("삭제된 레슨입니다.");
+            throw ApiException.notFound("삭제된 레슨입니다.");
         }
 
         // 비활성 레슨 숨기기
         if (lesson.getStatus() != LessonStatus.ACTIVE) {
-            throw new IllegalArgumentException("비활성 레슨입니다.");
+            throw ApiException.notFound("현재 공개되지 않은 레슨입니다.");
+        }
+
+        // 승인된 아티스트의 레슨만 공개
+        if (lesson.getArtistProfile().getUser().getArtistStatus() != ArtistStatus.APPROVED) {
+            throw ApiException.notFound("레슨이 없습니다.");
         }
 
         List<LessonStyleTagResponse> styleTags = loadStyleTags(lesson.getLessonId());
@@ -426,7 +388,10 @@ public class LessonService {
                 styleTags,
                 lesson.getCreateDt(),
                 lesson.getUpdateDt(),
-                artist
+                artist,
+                lesson.getClosingPolicy() == LessonClosingPolicy.AUTO_CLOSE_WHEN_NO_SLOTS
+                        && lessonTimeSlotRepository.countByLesson_LessonIdAndStatusAndStartDtAfter(
+                                lesson.getLessonId(), TimeSlotStatus.OPEN, TimeDefaults.nowKst()) == 0
         );
 
         return new ApiRespDto<>("success", "조회 완료", resp);
@@ -434,6 +399,38 @@ public class LessonService {
 
 
 
+
+    // 진행 중인 예약(요청 대기/확정/완료 대기) 수
+    private long countActiveReservations(Long lessonId) {
+        return reservationRepository.countByLesson_LessonIdAndStatusIn(lessonId,
+                List.of(ReservationStatus.REQUESTED, ReservationStatus.CONFIRMED, ReservationStatus.COMPLETION_PENDING));
+    }
+
+    // 아티스트 관리용 레슨 응답 (목록/상세/수정 결과 공통)
+    private ArtistLessonResponse toArtistResponse(Lesson lesson) {
+        return new ArtistLessonResponse(
+                lesson.getLessonId(),
+                lesson.getTitle(),
+                lesson.getInstrument().getInstId(),
+                lesson.getDescription(),
+                lesson.getRequirementText(),
+                lesson.getPrice(),
+                lesson.getDurationMin(),
+                lesson.getMode(),
+                lesson.getStatus(),
+                loadStyleTags(lesson.getLessonId()),
+                lesson.getClosingPolicy(),
+                lesson.getCreateDt(),
+                lesson.getUpdateDt(),
+                lesson.getInstrument().getInstName(),
+                countActiveReservations(lesson.getLessonId()),
+                lesson.isDeleted(),
+                reservationRepository.countByLesson_LessonIdAndStatusIn(lesson.getLessonId(),
+                        List.of(ReservationStatus.REQUESTED)),
+                lessonTimeSlotRepository.countByLesson_LessonIdAndStatusAndStartDtAfter(lesson.getLessonId(),
+                        TimeSlotStatus.OPEN, TimeDefaults.nowKst())
+        );
+    }
 
     // 스타일 태그 유틸
     private List<LessonStyleTagResponse> loadStyleTags(Long lessonId) {

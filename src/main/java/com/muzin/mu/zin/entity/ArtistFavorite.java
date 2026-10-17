@@ -1,5 +1,6 @@
 package com.muzin.mu.zin.entity;
 
+import com.muzin.mu.zin.common.TimeDefaults;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -44,6 +45,6 @@ public class ArtistFavorite {
 
     @PrePersist
     public void prePersist() {
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = TimeDefaults.nowKst();
     }
 }

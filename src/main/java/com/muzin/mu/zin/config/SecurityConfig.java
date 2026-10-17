@@ -1,10 +1,12 @@
 package com.muzin.mu.zin.config;
 
 import com.muzin.mu.zin.security.filter.JwtAuthenticationFilter;
+import com.muzin.mu.zin.security.handler.JsonSecurityErrorHandler;
 import com.muzin.mu.zin.security.handler.OAuth2FailureHandler;
 import com.muzin.mu.zin.security.handler.OAuth2SuccessHandler;
 import com.muzin.mu.zin.service.OAuth2PrincipalUserService;
-import lombok.RequiredArgsConstructor;
+import com.muzin.mu.zin.security.filter.RequestIdFilter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -27,6 +29,7 @@ public class SecurityConfig {
 
     // 의존성 안정적으로 유지
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JsonSecurityErrorHandler jsonSecurityErrorHandler;
 //    private final OAuth2PrincipalUserService oAuth2PrincipalUserService;
 //    private final OAuth2FailureHandler oAuth2FailureHandler;
 //    private final OAuth2SuccessHandler oAuth2SuccessHandler;
@@ -44,20 +47,24 @@ public class SecurityConfig {
     //    }
 
 //    // 생성자 주입
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                          JsonSecurityErrorHandler jsonSecurityErrorHandler) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.jsonSecurityErrorHandler = jsonSecurityErrorHandler;
     }
 
     // CORS 설정 만드는 부분 - 어떤 프론트엔드에서 이 백엔드를 호출할 수 있나?
     @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
+    public CorsConfigurationSource corsConfigurationSource(@Value("${app.frontend-url}") String frontendUrl) {
         // CORS 설정 객체 생성
         CorsConfiguration corsConfiguration = new CorsConfiguration();
         // 허용할 Origin 패턴 설정
 //        // 나중에 실제 도메인만 열어주는 식으로 사용하면 됨
 //        corsConfiguration.addAllowedOriginPattern(CorsConfiguration.ALL);
-        corsConfiguration.addAllowedOriginPattern("http://localhost:5173");
+        corsConfiguration.addAllowedOriginPattern(frontendUrl);
         corsConfiguration.addAllowedOriginPattern("http://127.0.0.1:5173"); // (선택) 로컬 IP로 접속할 때 대비
+        // 프론트에서 요청 ID를 읽을 수 있게 노출
+        corsConfiguration.addExposedHeader(RequestIdFilter.HEADER);
         // 허용 헤더 설정
         corsConfiguration.addAllowedHeader(CorsConfiguration.ALL);
         // 쿠키 / 인증정보 포함한 요청 허용
@@ -89,25 +96,26 @@ public class SecurityConfig {
 
         http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
+        // 인증/인가 실패도 GlobalExceptionHandler 와 같은 JSON 형태로 (OAuth2 로그인 페이지 302 리다이렉트 방지)
+        http.exceptionHandling(ex -> ex
+                .authenticationEntryPoint(jsonSecurityErrorHandler)
+                .accessDeniedHandler(jsonSecurityErrorHandler)
+        );
+
         http.authorizeHttpRequests(auth -> {auth
 
-                // 레슨 타임 슬롯 - 예약 시간 보기는 아무나 접근 가능 - 선택하고 예약 시
-                // 인증된 유저가 아니면 접근 불가 로그인 + 이메일 인증 완료된 유저만 접근 가능
-                .requestMatchers(HttpMethod.GET, "/lessons/me/**").authenticated()
+                // 아티스트 레슨/슬롯/반복규칙 관리, 받은 예약 관리 - 승인된 아티스트만
+                // (아티스트 승인은 Role 이 아닌 users.artist_status 라서 JWT 필터가 ARTIST_APPROVED 권한으로 변환)
+                .requestMatchers("/lessons/me", "/lessons/me/**").hasAuthority(JwtAuthenticationFilter.ARTIST_APPROVED_AUTHORITY)
+                .requestMatchers("/reservations/artist", "/reservations/artist/**").hasAuthority(JwtAuthenticationFilter.ARTIST_APPROVED_AUTHORITY)
 
+                // 레슨 검색/상세/예약 가능 시간 보기는 아무나 접근 가능
                 .requestMatchers(HttpMethod.GET, "/lessons/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/regions/**", "/instruments/**", "/artists/**",
+                        "/reviews/keywords", "/reviews/lessons/**", "/reviews/artists/**").permitAll()
 
-                .requestMatchers(HttpMethod.POST, "/lessons/**").authenticated()
-                .requestMatchers(HttpMethod.PUT,  "/lessons/**").authenticated()
-                .requestMatchers(HttpMethod.PATCH,"/lessons/**").authenticated()
-                .requestMatchers(HttpMethod.DELETE,"/lessons/**").authenticated()
-
-                .requestMatchers(HttpMethod.GET, "/regions/**").permitAll()
-
-                .requestMatchers("/auth/**", "/login", "/error", "/oauth2/**", "/login/oauth2/**",
-                    "/mail/verify", "/instruments/**", "/lessons/style-tags", "/artists/**",
-                        "/reviews/keywords", "/reviews/lessons/**", "/reviews/artists/**").permitAll();
-
+                .requestMatchers("/auth/signup", "/auth/signin", "/auth/principal", "/error",
+                        "/oauth2/**", "/login/oauth2/**", "/mail/verify").permitAll();
 
             auth.anyRequest().authenticated();
         });

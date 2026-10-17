@@ -29,6 +29,8 @@ public record LessonSearchRequest(
         LocalDateTime to,
 
         List<Integer> daysOfWeek,
-        List<TimePart> timeParts
+        List<TimePart> timeParts,
+        Integer page,
+        Integer size
 ) {
 }

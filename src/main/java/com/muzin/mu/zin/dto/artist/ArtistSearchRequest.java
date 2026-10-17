@@ -11,6 +11,8 @@ public record ArtistSearchRequest(
         List<Long> styleTagIds,
         String region1DepthName,
         String region2DepthName,
-        String region3DepthName
+        String region3DepthName,
+        Integer page,
+        Integer size
 ) {
 }

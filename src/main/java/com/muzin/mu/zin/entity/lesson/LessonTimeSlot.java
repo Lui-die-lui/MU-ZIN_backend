@@ -41,6 +41,11 @@ public class LessonTimeSlot extends BaseTimeEntity {
     @Builder.Default
     private TimeSlotStatus status = TimeSlotStatus.OPEN;
 
+    // 낙관적 락: 슬롯 상태를 두 요청이 동시에 바꾸면 한쪽은 409
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
     public void pending() {
         if (this.status != TimeSlotStatus.OPEN) {
             throw new IllegalStateException("OPEN 슬롯만 PENDING으로 전환 가능");
@@ -82,6 +87,27 @@ public class LessonTimeSlot extends BaseTimeEntity {
             throw new IllegalStateException("BOOKED 슬롯은 CLOSED로 바꿀 수 없습니다.");
         }
         this.status = TimeSlotStatus.CLOSED;
+    }
+
+    // 아티스트가 직접 닫은 시간을 다시 열기 (예전엔 open()이 PENDING만 받아서 닫은 시간을 다시 열 수 없었음)
+    public void reopenFromClosed() {
+        if (this.status != TimeSlotStatus.CLOSED) {
+            throw new IllegalStateException("닫힌 시간만 다시 열 수 있습니다.");
+        }
+        this.status = TimeSlotStatus.OPEN;
+    }
+
+    // 아티스트가 예약 가능한 시간을 닫기 (요청 대기/확정된 시간은 닫을 수 없음)
+    public void closeFromOpen() {
+        if (this.status != TimeSlotStatus.OPEN) {
+            throw new IllegalStateException("예약 가능한 시간만 닫을 수 있습니다.");
+        }
+        this.status = TimeSlotStatus.CLOSED;
+    }
+
+    // 수업 시간(분)이 바뀌면 아직 지나지 않은 시간의 종료 시각도 함께 맞춤
+    public void changeDuration(int durationMin) {
+        this.endDt = this.startDt.plusMinutes(durationMin);
     }
 
     // UX 적으로 봤을때 필요함

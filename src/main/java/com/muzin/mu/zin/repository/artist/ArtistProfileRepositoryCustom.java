@@ -5,11 +5,12 @@ import com.muzin.mu.zin.dto.artist.ArtistSearchRequest;
 import com.muzin.mu.zin.dto.artist.ArtistSearchResponse;
 import com.muzin.mu.zin.dto.artist.ArtistSearchRow;
 import com.muzin.mu.zin.dto.region.SearchServiceRegionRow;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
 public interface ArtistProfileRepositoryCustom {
-    List<ArtistSearchRow> searchArtistRows(ArtistSearchRequest req);
+    List<ArtistSearchRow> searchArtistRows(ArtistSearchRequest req, Pageable pageable);
 
     List<ArtistInstrumentRow> findArtistInstrumentRows(List<Long> artistProfileIds);
 

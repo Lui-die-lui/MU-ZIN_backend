@@ -1,19 +1,17 @@
 package com.muzin.mu.zin.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-
-// 중복 응답용 DTO
+// 공통 응답 DTO
+// 성공: HTTP 2xx + status "success" / 실패: HTTP 4xx·5xx + status "failed" (GlobalExceptionHandler)
 public record ApiRespDto<T> (
      String status,
      String message,
      T data
 ) {
     public static <T> ApiRespDto<T> ok(T data) {
-        return new ApiRespDto<>("ok", null, data);
+        return new ApiRespDto<>("success", null, data);
     }
 
-    public static <T> ApiRespDto<T> fail(String message) {
-        return new ApiRespDto<>("failed", message, null);
+    public static <T> ApiRespDto<T> ok(String message, T data) {
+        return new ApiRespDto<>("success", message, data);
     }
 }

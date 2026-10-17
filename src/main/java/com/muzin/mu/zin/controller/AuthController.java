@@ -4,14 +4,15 @@ import com.muzin.mu.zin.dto.ApiRespDto;
 import com.muzin.mu.zin.dto.auth.PrincipalDto;
 import com.muzin.mu.zin.dto.auth.SigninRequest;
 import com.muzin.mu.zin.dto.auth.SignupRequest;
+import com.muzin.mu.zin.security.handler.JsonSecurityErrorHandler;
 import com.muzin.mu.zin.security.model.PrincipalUser;
+import jakarta.servlet.http.HttpServletRequest;
 import com.muzin.mu.zin.service.AuthService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -20,41 +21,27 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
     private final AuthService authService;
 
-    // 일반 200 ok 말고 커스텀 예외로 던져주는 중 - 이메일 중복 확인때문에
+    // 이메일 중복 시 409 (GlobalExceptionHandler)
     @PostMapping("/signup")
-    public ResponseEntity<ApiRespDto<?>> signup(@RequestBody SignupRequest req) {
+    public ResponseEntity<ApiRespDto<?>> signup(@Valid @RequestBody SignupRequest req) {
         authService.signup(req);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new ApiRespDto<>("success", "회원가입 성공", null));
     }
 
+    // 실패 시 401 (이메일/비밀번호 불일치), 403 (정지 계정)
     @PostMapping("/signin")
-    public ResponseEntity<?> signin(@RequestBody SigninRequest signinRequest) {
-        return ResponseEntity.ok(authService.signin(signinRequest));
+    public ApiRespDto<String> signin(@Valid @RequestBody SigninRequest signinRequest) {
+        return authService.signin(signinRequest);
     }
 
-    // Principal 요청 안돼서 403뜸 Why?
+    // 비로그인 401 / 토큰 만료·위조 401 / 정지 계정 403 (공개 경로라 사유는 JWT 필터 기록에서 가져옴)
     @GetMapping("/principal")
-//    public ResponseEntity<?> getPrincipal() {
-//        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-//        PrincipalUser principalUser = (PrincipalUser) authentication.getPrincipal(); // 이거 string을 principal로 캐스팅하다 터짐
-//        // 해당 로직은 웹개발 - 러너스 하이 로직 참조했는데 이 방법으로는 안될듯
-//        ApiRespDto<?> apiRespDto = new ApiRespDto<>("success","", principalUser);
-//        return ResponseEntity.ok(apiRespDto);
-//    }
-//    public ResponseEntity<?> getPrincipal(@AuthenticationPrincipal PrincipalUser principalUser) {
-//        if (principalUser == null) {
-//            ApiRespDto<?> fail = new ApiRespDto<>("failed", "인증되지 않은 사용자입니다.",null);
-//            return ResponseEntity.status(401).body(fail);
-//        }
-//
-//        ApiRespDto<?> apiRespDto = new ApiRespDto<>("success", "", principalUser);
-//        return ResponseEntity.ok(apiRespDto);
-//    }
-    public ResponseEntity<ApiRespDto<PrincipalDto>> principal( @AuthenticationPrincipal PrincipalUser principal) {
-        return ResponseEntity.ok(authService.getPrincipalDto(principal));
+    public ApiRespDto<PrincipalDto> principal(@AuthenticationPrincipal PrincipalUser principal,
+                                              HttpServletRequest request) {
+        if (principal == null) {
+            throw JsonSecurityErrorHandler.authFailure(request);
+        }
+        return authService.getPrincipalDto(principal);
     }
-
-
-
 }

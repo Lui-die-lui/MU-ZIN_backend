@@ -6,6 +6,7 @@ import com.muzin.mu.zin.dto.artist.ArtistLessonCardResponse;
 import com.muzin.mu.zin.dto.artist.ArtistLessonDetailResponse;
 import com.muzin.mu.zin.dto.lesson.LessonCardRow;
 import com.muzin.mu.zin.entity.lesson.Lesson;
+import com.muzin.mu.zin.exception.ApiException;
 import com.muzin.mu.zin.repository.lesson.LessonRepository;
 import com.muzin.mu.zin.repository.lesson.LessonRepositoryCustom;
 import lombok.RequiredArgsConstructor;
@@ -35,7 +36,7 @@ public class ArtistLessonQueryService {
     @Transactional(readOnly = true)
     public ApiRespDto<ArtistLessonDetailResponse> getArtistLessonDetail(Long artistProfileId, Long lessonId) {
         Lesson lesson = lessonRepositoryCustom.findArtistLessonDetailDsl(artistProfileId, lessonId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 레슨을 찾을 수 없습니다."));
+                .orElseThrow(() -> ApiException.notFound("레슨을 찾을 수 없어요. 비공개로 바뀌었거나 삭제된 레슨일 수 있어요."));
         ArtistLessonDetailResponse resp = toArtistLessonDetailResponse(lesson);
         return new ApiRespDto<>("success", "", resp);
     }

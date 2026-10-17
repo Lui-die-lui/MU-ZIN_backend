@@ -1,5 +1,6 @@
 package com.muzin.mu.zin.entity;
 
+import com.muzin.mu.zin.common.TimeDefaults;
 import com.muzin.mu.zin.entity.artist.ArtistServiceRegion;
 import com.muzin.mu.zin.entity.common.BaseTimeEntity;
 import com.muzin.mu.zin.entity.instrument.Instrument;
@@ -113,7 +114,7 @@ public class ArtistProfile extends BaseTimeEntity {
 
     // 아티스트 전환 제출 날짜
     public void markSubmitted() {
-        this.submittedDt = LocalDateTime.now();
+        this.submittedDt = TimeDefaults.nowKst();
     }
 
     // 악기 매핑 편의 매서드
@@ -126,7 +127,7 @@ public class ArtistProfile extends BaseTimeEntity {
     }
 
     public void markReviewed() {
-        this.reviewedDt = LocalDateTime.now();
+        this.reviewedDt = TimeDefaults.nowKst();
     }
 
     // 반려 사유 클리어 함수
