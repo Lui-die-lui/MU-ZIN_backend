@@ -60,6 +60,27 @@ public class User extends BaseTimeEntity {
     private ArtistStatus artistStatus = ArtistStatus.NONE;
 
 
+    // 계정 정지 시각 (null 이면 정상) - 정지되면 유효한 토큰이 있어도 모든 인증 API 차단
+    @Column(name = "suspended_dt")
+    private LocalDateTime suspendedDt;
+
+    @Column(name = "suspended_reason")
+    private String suspendedReason;
+
+    public boolean isSuspended() {
+        return suspendedDt != null;
+    }
+
+    public void suspend(LocalDateTime at, String reason) {
+        this.suspendedDt = at;
+        this.suspendedReason = reason;
+    }
+
+    public void unsuspend() {
+        this.suspendedDt = null;
+        this.suspendedReason = null;
+    }
+
     // 해당 유저의 UserRole 리스트
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

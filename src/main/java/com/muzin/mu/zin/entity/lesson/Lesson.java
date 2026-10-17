@@ -1,5 +1,6 @@
 package com.muzin.mu.zin.entity.lesson;
 
+import com.muzin.mu.zin.common.TimeDefaults;
 import com.muzin.mu.zin.entity.ArtistProfile;
 import com.muzin.mu.zin.entity.common.BaseTimeEntity;
 import com.muzin.mu.zin.entity.instrument.Instrument;
@@ -73,7 +74,7 @@ public class Lesson extends BaseTimeEntity {
 
     public void markDeleted() {
         this.status = LessonStatus.INACTIVE;
-        this.deletedDt = LocalDateTime.now();
+        this.deletedDt = TimeDefaults.nowKst();
     }
 
     public void restore() {

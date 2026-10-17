@@ -20,6 +20,9 @@ public record LessonDetailResponse(
         List<LessonStyleTagResponse> styleTags,
         LocalDateTime createDt,
         LocalDateTime updateDt,
-        ArtistSummaryResponse artist
+        ArtistSummaryResponse artist,
+        // "시간이 없으면 자동 비공개" 레슨인데 예약 가능한 시간이 없어 검색에서 빠진 상태
+        // (검색 결과를 연 뒤 마지막 시간이 마감된 경우 등) -> 화면에서 "현재 예약할 수 없는 레슨" 안내
+        boolean autoClosed
 ) {
 }

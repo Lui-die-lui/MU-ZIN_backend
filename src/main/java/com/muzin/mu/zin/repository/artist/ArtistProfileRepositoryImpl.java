@@ -16,6 +16,7 @@ import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
@@ -26,7 +27,7 @@ public class ArtistProfileRepositoryImpl implements ArtistProfileRepositoryCusto
 
     // 존재 여부 검사 필터
     @Override
-    public List<ArtistSearchRow> searchArtistRows(ArtistSearchRequest req) {
+    public List<ArtistSearchRow> searchArtistRows(ArtistSearchRequest req, Pageable pageable) {
 
         QArtistProfile artistProfile = QArtistProfile.artistProfile;
         QUser user = QUser.user;
@@ -40,7 +41,6 @@ public class ArtistProfileRepositoryImpl implements ArtistProfileRepositoryCusto
                         artistProfile.artistProfileId,
                         user.username,
                         artistProfile.majorName,
-                        user.email,
                         user.profileImgUrl,
                         artistProfile.region1DepthName,
                         artistProfile.region2DepthName,
@@ -58,6 +58,9 @@ public class ArtistProfileRepositoryImpl implements ArtistProfileRepositoryCusto
                         styleTagIdsCondition(req.styleTagIds(), artistStyleMap, artistProfile),
                         regionCondition(req, artistProfile)
                 )
+                .orderBy(artistProfile.artistProfileId.desc())
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
                 .fetch();
     }
 

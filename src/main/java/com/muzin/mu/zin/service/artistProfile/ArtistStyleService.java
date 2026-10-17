@@ -66,7 +66,8 @@ public class ArtistStyleService {
         // 태그 엔티티 조회
         List<LessonStyleTag> tags = lessonStyleTagRepository.findAllById(ids);
         if (tags.size() != ids.size()){ // 실제 조회댄 태그 개수
-            return new ApiRespDto<>("failed", "존재하지 않는 스타일 태그가 포함되어 있습니다.", List.of());
+            // 예외로 던져야 위에서 지운 기존 매핑까지 롤백됨 (200 failed 반환 시 기존 태그가 사라지는 버그였음)
+            throw new IllegalArgumentException("존재하지 않는 스타일 태그가 포함되어 있습니다.");
         }
 
         // 재생성(수정)

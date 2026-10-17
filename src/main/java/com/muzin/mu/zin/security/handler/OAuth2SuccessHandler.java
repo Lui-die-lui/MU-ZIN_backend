@@ -9,6 +9,7 @@ import com.muzin.mu.zin.repository.RoleRepository;
 import com.muzin.mu.zin.repository.UserRepository;
 import com.muzin.mu.zin.repository.UserRoleRepository;
 import com.muzin.mu.zin.security.jwt.JwtUtils;
+import com.muzin.mu.zin.service.UsernameGenerator;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -24,10 +25,22 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-// 현재 merge 없이 signup 자동 + signin
+/*
+ * 소셜 로그인 성공 후 처리
+ *  - 이미 연동된 소셜 계정이면 로그인
+ *  - 같은 이메일로 가입된 계정이 이미 있으면 (일반 가입이든 다른 소셜이든) 가입 거부: EMAIL_ALREADY_REGISTERED
+ *    -> 이메일 1개당 계정 1개. 자동 연동(merge)은 하지 않음
+ *       (제공자가 이메일 소유를 보장하지 않으면 남의 계정에 붙을 수 있어서)
+ *  - 없으면 새 계정 생성 + 소셜 연동
+ *
+ * TODO(보류): 소셜 가입 유저의 이메일 인증 처리 방식 결정
+ *  - 제공자의 이메일 인증 여부(Google email_verified, Kakao is_email_verified)를 믿고 바로 인증 처리할지
+ *  - 일반 가입처럼 인증 메일을 따로 보낼지
+ */
 @Component
 @RequiredArgsConstructor
 public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
@@ -36,10 +49,9 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
     private final UserRepository userRepository;
     private final OAuth2UserRepository oAuth2UserRepository;
     private final PasswordEncoder passwordEncoder;
-
-    // userRole 주입이 안되고있었음
     private final UserRoleRepository userRoleRepository;
     private final RoleRepository roleRepository;
+    private final UsernameGenerator usernameGenerator;
 
     @Value("${oauth2.redirect.success-url}")
     private String successRedirectUrl;
@@ -61,15 +73,18 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         String email = principal.getAttribute("email");
 
         if (provider == null || providerUserId == null) {
-            redirectError(request, response, "OAUTH2_MISSING");
+            redirectError(request, response, "OAUTH2_MISSING", null);
             return;
         }
 
         // Signin : 이미 연동된 소셜이면 바로 로그인
         Optional<OAuth2UserEntity> linked = oAuth2UserRepository.findByProviderAndProviderUserId(provider, providerUserId);
-
         if (linked.isPresent()) {
             User user = linked.get().getUser();
+            if (user.isSuspended()) {
+                redirectError(request, response, "ACCOUNT_SUSPENDED", null);
+                return;
+            }
             ensureUserRole(user);
             redirectWithToken(request, response, user);
             return;
@@ -77,41 +92,23 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
         // email 없으면 Signup 불가(카카오 미동의 등)
         if (email == null || email.isBlank()) {
-            redirectError(request, response, "EMAIL_REQUIRED");
+            redirectError(request, response, "EMAIL_REQUIRED", null);
             return;
         }
 
-        // Merge 미지원 MVP - 기존 이메일 계정 있으면 가입 불가 (고려해볼것 동일한 이메일 가입 안되는거 서비스 상으로 좀 그럼)
-        Optional<User> existing = userRepository.findByEmail(email);
+        // 중복 가입 방지: 같은 이메일 계정이 이미 있으면 거부하고 기존 가입 방식을 알려줌
+        Optional<User> existing = userRepository.findByEmailIgnoreCase(email.trim());
         if (existing.isPresent()) {
-
-//            redirectError(request, response, "MERGE_REQUIRED");
-            User user = existing.get();
-
-            if (oAuth2UserRepository.existsByUserAndProvider(user, provider)) {
-                // 이미 같은 provider로 연동되어 있으면 중복 저장하지 말고 로그인만
-                ensureUserRole(user);
-                redirectWithToken(request, response, user);
-                return;
-            }
-
-            oAuth2UserRepository.save(
-                    OAuth2UserEntity.builder()
-                            .user(user)
-                            .provider(provider)
-                            .providerUserId(providerUserId)
-                            .build()
-            );
-
-            ensureUserRole(user);
-            redirectWithToken(request, response, user);
+            List<OAuth2UserEntity> links = oAuth2UserRepository.findAllByUser_UserId(existing.get().getUserId());
+            String registeredWith = links.isEmpty() ? "email" : links.get(0).getProvider();
+            redirectError(request, response, "EMAIL_ALREADY_REGISTERED", registeredWith);
             return;
         }
 
-        // Signup - 새로운 User 생성 + OAuth2 유저 생성
+        // Signup - 새로운 User 생성 + OAuth2 유저 생성 (비밀번호 로그인은 불가능한 랜덤값)
         User newUser = User.builder()
-                .email(email)
-                .username(email)
+                .email(email.trim())
+                .username(usernameGenerator.generate(email.trim())) // 공개 화면에 이메일이 노출되지 않게
                 .password(passwordEncoder.encode("oauth2-" + UUID.randomUUID()))
                 .build();
 
@@ -138,7 +135,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         }
 
         Role userRoleEntity = roleRepository.findByRoleName("ROLE_USER")
-                .orElseThrow(() -> new IllegalArgumentException("USER Role not found"));
+                .orElseThrow(() -> new IllegalStateException("USER Role not found"));
 
         // userRole을 붙여서 save 해줌
         userRoleRepository.save(
@@ -165,14 +162,19 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         getRedirectStrategy().sendRedirect(request,response, targetUrl);
     }
 
-    // 리다이렉트 실패 시
+    // 실패 시 프론트 /oauth2/redirect?errorCode=...(&provider=...)
     private void redirectError(HttpServletRequest request,
                                HttpServletResponse response,
-                               String errorCode) throws IOException {
+                               String errorCode,
+                               String registeredWith) throws IOException {
 
-        String targetUrl = UriComponentsBuilder.fromUriString(errorRedirectUrl)
-                .queryParam("errorCode", errorCode)
-                .build()
+        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(errorRedirectUrl)
+                .queryParam("errorCode", errorCode);
+        if (registeredWith != null) {
+            builder.queryParam("registeredWith", registeredWith);
+        }
+
+        String targetUrl = builder.build()
                 .encode(StandardCharsets.UTF_8)
                 .toUriString();
 

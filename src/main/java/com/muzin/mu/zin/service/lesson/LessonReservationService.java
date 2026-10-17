@@ -4,8 +4,10 @@ import com.muzin.mu.zin.common.TimeDefaults;
 import com.muzin.mu.zin.dto.ApiRespDto;
 import com.muzin.mu.zin.dto.lesson.TimeSlotResponse;
 import com.muzin.mu.zin.dto.reservation.*;
+import com.muzin.mu.zin.entity.ArtistStatus;
 import com.muzin.mu.zin.entity.User;
 import com.muzin.mu.zin.entity.lesson.Lesson;
+import com.muzin.mu.zin.entity.lesson.LessonStatus;
 import com.muzin.mu.zin.entity.lesson.LessonTimeSlot;
 import com.muzin.mu.zin.entity.lesson.TimeSlotStatus;
 import com.muzin.mu.zin.entity.notification.NotificationRefType;
@@ -14,6 +16,7 @@ import com.muzin.mu.zin.entity.reservation.CompletionSource;
 import com.muzin.mu.zin.entity.reservation.LessonReservation;
 import com.muzin.mu.zin.entity.reservation.ReservationStatus;
 import com.muzin.mu.zin.event.NotificationEvent;
+import com.muzin.mu.zin.exception.ApiException;
 import com.muzin.mu.zin.repository.UserRepository;
 import com.muzin.mu.zin.repository.lesson.LessonReservationRepository;
 import com.muzin.mu.zin.repository.lesson.LessonTimeSlotRepository;
@@ -46,11 +49,30 @@ public class LessonReservationService {
                 .orElseThrow(() -> new IllegalArgumentException("유저가 존재하지 않습니다."));
 
         LessonTimeSlot timeSlot = timeSlotRepository.findByIdForUpdate(req.timeSlotId())
-                .orElseThrow(() -> new IllegalArgumentException("예약 가능한 시간이 아닙니다. 다시 시도해주세요."));
+                .orElseThrow(() -> ApiException.notFound("예약 가능한 시간이 아닙니다. 다시 시도해주세요."));
 
         if (timeSlot.getStatus() != TimeSlotStatus.OPEN) {
-            return new ApiRespDto<>("failed", "예약 가능한 시간이 아닙니다. 다시 시도해주세요.", null);
+            throw ApiException.conflict("SLOT_NOT_AVAILABLE", "예약 가능한 시간이 아닙니다. 다시 시도해주세요.");
         }
+
+        // 이미 시작했거나 지난 시간은 예약 불가
+        if (!timeSlot.getStartDt().isAfter(TimeDefaults.nowKst())) {
+            throw ApiException.conflict("SLOT_NOT_AVAILABLE", "이미 지난 시간은 예약할 수 없습니다.");
+        }
+
+        // 공개 중인 레슨 + 승인된 아티스트의 레슨만 예약 가능
+        Lesson targetLesson = timeSlot.getLesson();
+        if (targetLesson.isDeleted() || targetLesson.getStatus() != LessonStatus.ACTIVE
+                || targetLesson.getArtistProfile().getUser().getArtistStatus() != ArtistStatus.APPROVED) {
+            throw ApiException.conflict("LESSON_NOT_AVAILABLE", "현재 예약할 수 없는 레슨입니다.");
+        }
+
+        // 본인 레슨은 예약 불가
+        if (targetLesson.getArtistProfile().getUser().getUserId().equals(userId)) {
+            throw ApiException.badRequest("본인 레슨은 예약할 수 없습니다.");
+        }
+
+        // TODO(보류): 이메일 인증 완료 유저만 예약 가능하게 할지 - 소셜 가입 유저 인증 방식 결정 후 적용
 
         // slot_id 가 UK 니까
 //        if (reservationRepository.existsByTimeSlot_TimeSlotIdAndStatusIn(timeSlot.getTimeSlotId())) {
@@ -68,7 +90,7 @@ public class LessonReservationService {
         // 요청하는 순간 booked -> pending
         timeSlot.pending();
 
-        Lesson lesson = timeSlot.getLesson();
+        Lesson lesson = targetLesson;
         Integer price = (lesson.getPrice() == null ? 0 : lesson.getPrice()); // 예약 당시 가격
 
         LessonReservation reservation = LessonReservation.builder()
@@ -115,7 +137,7 @@ public class LessonReservationService {
         Long userId = principalUser.getUserId();
 
         LessonReservation reservation = reservationRepository.findByReservationIdAndUser_UserId(reservationId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("잘못된 접근입니다. 다시 시도해주세요."));
+                .orElseThrow(() -> ApiException.notFound("예약을 찾을 수 없습니다."));
 
         return new ApiRespDto<>("success", "조회 완료", toArtistDetail(reservation));
     }
@@ -126,24 +148,14 @@ public class LessonReservationService {
         Long userId = principalUser.getUserId();
 
         LessonReservation reservation = reservationRepository.findByReservationIdAndUser_UserId(reservationId,userId)
-                .orElseThrow(() -> new IllegalArgumentException("잘못된 접근입니다. 다시 시도해주세요.")); // 내 예약 아님
+                .orElseThrow(() -> ApiException.notFound("예약을 찾을 수 없습니다.")); // 내 예약 아님
 
-        if (reservation.getStatus() == ReservationStatus.CANCELED) {
-            return new ApiRespDto<>("failed", "이미 취소된 예약입니다.", null);
-        }
-
-        if (reservation.getStatus() == ReservationStatus.REJECTED) {
-            return new ApiRespDto<>("failed", "이미 거절된 예약입니다.", null);
-        }
-
-        if (reservation.getStatus() == ReservationStatus.COMPLETED) {
-            return new ApiRespDto<>("failed","진행이 완료된 레슨은 취소할 수 없습니다.",null);
-        }
+        rejectIfFinished(reservation);
 
         LocalDateTime now = LocalDateTime.now(KST);
         LocalDateTime startDt = reservation.getTimeSlot().getStartDt();
         if (!startDt.isAfter(now)) {
-            return new ApiRespDto<>("failed", "이미 진행중인 레슨은 취소할 수 없습니다.", null);
+            throw new IllegalStateException("이미 시작된 레슨은 취소할 수 없습니다.");
         }
 
         // 대기중(REQUESTED)은 언제든 취소 가능하게
@@ -170,7 +182,7 @@ public class LessonReservationService {
         // 확정(CONFIRMED)은 24시간 룰 적용
         if (reservation.getStatus() == ReservationStatus.CONFIRMED) {
             if (now.isAfter(startDt.minusHours(24))) {
-                return new ApiRespDto<>("failed", "취소가 불가능한 상태입니다. 아티스트에게 채팅으로 문의하세요.", null);
+                throw ApiException.conflict("CANCEL_DEADLINE_PASSED", "확정된 예약은 레슨 24시간 전까지만 취소할 수 있습니다. 아티스트에게 문의해주세요.");
             }
 
             reservation.cancel();
@@ -192,7 +204,7 @@ public class LessonReservationService {
             return new ApiRespDto<>("success", "예약 취소가 완료되었습니다.", null);
         }
 
-        return new ApiRespDto<>("failed", "취소할 수 없는 상태입니다.", null);
+        throw new IllegalStateException("취소할 수 없는 상태입니다.");
     }
 
     // 아티스트 예약 조회 리스트
@@ -211,7 +223,7 @@ public class LessonReservationService {
 
         LessonReservation reservation = reservationRepository
                 .findByReservationIdAndLesson_ArtistProfile_User_UserId(reservationId, artistUserId)
-                .orElseThrow(() -> new IllegalArgumentException("잘못된 접근입니다. 다시 시도해주세요."));
+                .orElseThrow(() -> ApiException.notFound("예약을 찾을 수 없습니다."));
 
         return new ApiRespDto<>("success", "조회 완료", toArtistDetail(reservation));
     }
@@ -222,17 +234,18 @@ public class LessonReservationService {
     public ApiRespDto<?> confirmReservation(Long reservationId, PrincipalUser principalUser) {
         Long artistUserId = principalUser.getUserId();
 
-        LessonReservation reservation =
-                reservationRepository.findByReservationIdAndLesson_ArtistProfile_User_UserId(reservationId, artistUserId)
-                        .orElseThrow(() -> new IllegalArgumentException("잘못된 접근입니다. 다시 시도해주세요."));
+        LessonReservation reservation = getArtistReservationOrThrow(reservationId, artistUserId);
 
         if (reservation.getStatus() != ReservationStatus.REQUESTED) {
-            return new ApiRespDto<>("failed","요청된 예약만 확인 가능합니다.", null);
+            throw new IllegalStateException("대기 중인 예약 요청만 확정할 수 있습니다.");
         }
 
         LessonTimeSlot slot = reservation.getTimeSlot();
+        if (!slot.getStartDt().isAfter(TimeDefaults.nowKst())) {
+            throw new IllegalStateException("이미 시작 시간이 지난 요청은 확정할 수 없습니다.");
+        }
         if (slot.getStatus() != TimeSlotStatus.PENDING) {
-            return new ApiRespDto<>("failed", "슬롯 상태가 올바르지 않습니다.(PENDING이 아님)", null);
+            throw new IllegalStateException("슬롯 상태가 올바르지 않습니다. 새로고침 후 다시 시도해주세요.");
         }
 
         reservation.confirm();
@@ -257,12 +270,10 @@ public class LessonReservationService {
     public ApiRespDto<?> rejectReservation(Long reservationId, PrincipalUser principalUser) {
         Long artistUserId = principalUser.getUserId();
 
-        LessonReservation reservation =
-                reservationRepository.findByReservationIdAndLesson_ArtistProfile_User_UserId(reservationId, artistUserId)
-                        .orElseThrow(() -> new IllegalArgumentException("잘못된 접근입니다. 다시 시도해주세요."));
+        LessonReservation reservation = getArtistReservationOrThrow(reservationId, artistUserId);
 
         if (reservation.getStatus() != ReservationStatus.REQUESTED) {
-            return new ApiRespDto<>("failed","요청된 예약만 확인 가능합니다.", null);
+            throw new IllegalStateException("대기 중인 예약 요청만 거절할 수 있습니다.");
         }
 
         reservation.reject();
@@ -291,24 +302,22 @@ public class LessonReservationService {
     public ApiRespDto<?> cancelByArtist(Long reservationId, ArtistCancelRequest req, PrincipalUser principalUser) {
         Long artistUserId = principalUser.getUserId();
 
-        LessonReservation reservation = reservationRepository
-                .findByReservationIdAndLesson_ArtistProfile_User_UserId(reservationId, artistUserId)
-                .orElseThrow(() -> new IllegalArgumentException("잘못된 접근입니다. 다시 시도해주세요."));
+        LessonReservation reservation = getArtistReservationOrThrow(reservationId, artistUserId);
 
-        if (reservation.getStatus() == ReservationStatus.CANCELED) {
-            return new ApiRespDto<>("failed","이미 취소된 예약입니다.", null);
-        }
-
-        if (reservation.getStatus() == ReservationStatus.REJECTED) {
-            return new ApiRespDto<>("failed","이미 거절된 예약입니다.",null);
-        }
-
-        if (reservation.getStatus() == ReservationStatus.COMPLETED) {
-            return new ApiRespDto<>("failed","진행이 완료된 레슨은 취소할 수 없습니다.", null);
-        }
+        rejectIfFinished(reservation);
 
         if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
-            return new ApiRespDto<>("failed", "확정된 예약만 취소할 수 있습니다.", null);
+            throw new IllegalStateException("확정된 예약만 취소할 수 있습니다.");
+        }
+
+        // 수강생과 같은 기준: 레슨 24시간 전까지만 (예전엔 화면에서만 막고 서버는 언제든 허용)
+        if (TimeDefaults.nowKst().isAfter(reservation.getTimeSlot().getStartDt().minusHours(24))) {
+            throw ApiException.conflict("CANCEL_DEADLINE_PASSED", "레슨 24시간 전부터는 취소할 수 없어요. 수강생과 직접 일정을 조율해주세요.");
+        }
+
+        String reason = (req == null || req.reason() == null) ? "" : req.reason().trim();
+        if (reason.length() > 200) {
+            throw new IllegalArgumentException("취소 사유는 200자 이하로 입력해주세요.");
         }
 
         reservation.cancel();
@@ -325,7 +334,8 @@ public class LessonReservationService {
                 userId,
                 NotificationType.RESERVATION_CANCELED_BY_ARTIST,
                 "예약 취소",
-                "아티스트 사정으로 예약이 취소되었습니다.",
+                // 아티스트가 적은 사유를 수강생 알림에 함께 (예전엔 받기만 하고 버려졌음)
+                reason.isEmpty() ? "아티스트 사정으로 예약이 취소되었습니다." : "아티스트 사정으로 예약이 취소되었습니다. 사유: " + reason,
                 NotificationRefType.RESERVATION,
                 reservation.getReservationId()
         ));
@@ -370,6 +380,7 @@ public class LessonReservationService {
 
         for (LessonReservation reservation : reservations) {
             reservation.autoComplete();
+            reservation.getTimeSlot().closeFromBooked();
 
             Long userId = reservation.getUser().getUserId();
 
@@ -387,19 +398,18 @@ public class LessonReservationService {
     // 아티스트 수동 완료
     @Transactional
     public ApiRespDto<?> completeReservationByArtist(Long reservationId, Long artistUserId) {
-        LessonReservation reservation = reservationRepository
-                .findByReservationIdAndLesson_ArtistProfile_User_UserId(reservationId, artistUserId)
-                .orElseThrow(() -> new IllegalArgumentException("잘못된 접근입니다. 다시 시도해주세요."));
+        LessonReservation reservation = getArtistReservationOrThrow(reservationId, artistUserId);
 
         if (reservation.getStatus() == ReservationStatus.COMPLETED) {
-            return new ApiRespDto<>("failed","이미 완료된 레슨입니다.",null);
+            throw new IllegalStateException("이미 완료된 레슨입니다.");
         }
 
         if (reservation.getStatus() != ReservationStatus.COMPLETION_PENDING) {
-            return new ApiRespDto<>("failed", "완료 처리 가능한 상태가 아닙니다.",null);
+            throw new IllegalStateException("완료 처리 가능한 상태가 아닙니다.");
         }
 
         reservation.completeByArtist();
+        reservation.getTimeSlot().closeFromBooked();
 
         Long userId = reservation.getUser().getUserId();
 
@@ -417,6 +427,49 @@ public class LessonReservationService {
 
     }
 
+
+    // 응답 없이 시작 시간이 지난 예약 요청 만료 (스케줄러)
+    // 예약 -> EXPIRED, 슬롯 PENDING -> CLOSED (이미 지난 시간이라 다시 열지 않음), 요청한 유저에게 알림
+    @Transactional
+    public void expireUnansweredRequests() {
+        List<LessonReservation> reservations =
+                reservationRepository.findRequestedReservationsToExpire(TimeDefaults.nowKst());
+
+        for (LessonReservation reservation : reservations) {
+            reservation.expire();
+
+            LessonTimeSlot slot = reservation.getTimeSlot();
+            if (slot.getStatus() == TimeSlotStatus.PENDING) {
+                slot.close();
+            }
+
+            publisher.publishEvent(new NotificationEvent(
+                    reservation.getUser().getUserId(),
+                    NotificationType.RESERVATION_EXPIRED,
+                    "예약 요청 만료",
+                    "아티스트가 응답하지 않아 예약 요청이 만료되었습니다.",
+                    NotificationRefType.RESERVATION,
+                    reservation.getReservationId()
+            ));
+        }
+    }
+
+    // 이미 끝난 예약(취소/거절/만료/완료)인지 확인
+    private void rejectIfFinished(LessonReservation reservation) {
+        switch (reservation.getStatus()) {
+            case CANCELED -> throw new IllegalStateException("이미 취소된 예약입니다.");
+            case REJECTED -> throw new IllegalStateException("이미 거절된 예약입니다.");
+            case EXPIRED -> throw new IllegalStateException("만료된 예약입니다.");
+            case COMPLETED, COMPLETION_PENDING -> throw new IllegalStateException("진행이 완료된 레슨은 취소할 수 없습니다.");
+            default -> { }
+        }
+    }
+
+    private LessonReservation getArtistReservationOrThrow(Long reservationId, Long artistUserId) {
+        return reservationRepository
+                .findByReservationIdAndLesson_ArtistProfile_User_UserId(reservationId, artistUserId)
+                .orElseThrow(() -> ApiException.notFound("예약을 찾을 수 없습니다."));
+    }
 
     // 공통 유틸 toResponse
     // DTO 변환 과정에서 LAZY 연관을 매번 꺼내 쓰는 구조라서 N+1이 생김 (

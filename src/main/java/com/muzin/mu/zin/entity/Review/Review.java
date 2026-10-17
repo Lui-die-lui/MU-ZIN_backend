@@ -1,5 +1,6 @@
 package com.muzin.mu.zin.entity.Review;
 
+import com.muzin.mu.zin.common.TimeDefaults;
 import com.muzin.mu.zin.entity.ArtistProfile;
 import com.muzin.mu.zin.entity.User;
 import com.muzin.mu.zin.entity.common.BaseTimeEntity;
@@ -70,7 +71,7 @@ public class Review extends BaseTimeEntity {
     }
 
     public void softDelete() {
-        this.deleteDt = LocalDateTime.now();
+        this.deleteDt = TimeDefaults.nowKst();
     }
 
     public boolean isDeleted() {

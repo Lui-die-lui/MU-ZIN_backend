@@ -36,4 +36,7 @@ out/
 ### VS Code ###
 .vscode/
 
-application.properties
+# 비밀값 (application.properties는 자리표시자만 있어 커밋함)
+.env
+.env.*
+!.env.example

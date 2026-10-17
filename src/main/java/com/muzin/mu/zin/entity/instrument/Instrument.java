@@ -2,6 +2,7 @@ package com.muzin.mu.zin.entity.instrument;
 
 // 악기명 = UNIQUE
 
+import com.muzin.mu.zin.common.TimeDefaults;
 import com.muzin.mu.zin.entity.User;
 import com.muzin.mu.zin.entity.common.BaseTimeEntity;
 import jakarta.persistence.*;
@@ -76,13 +77,13 @@ public class Instrument extends BaseTimeEntity {
         public void approve() {
                 this.status = InstrumentStatus.APPROVED;
                 this.rejectReason = null;
-                this.reviewedDt = LocalDateTime.now();
+                this.reviewedDt = TimeDefaults.nowKst();
         }
 
         public void reject(String reason) {
                 this.status = InstrumentStatus.REJECTED;
                 this.rejectReason = reason;
-                this.reviewedDt = LocalDateTime.now();
+                this.reviewedDt = TimeDefaults.nowKst();
         }
 
         public void deactivate() {

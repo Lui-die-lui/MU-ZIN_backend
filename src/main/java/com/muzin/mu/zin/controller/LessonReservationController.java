@@ -5,7 +5,7 @@ import com.muzin.mu.zin.dto.reservation.*;
 import com.muzin.mu.zin.entity.reservation.ReservationStatus;
 import com.muzin.mu.zin.security.model.PrincipalUser;
 import com.muzin.mu.zin.service.lesson.LessonReservationService;
-import lombok.Getter;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -23,7 +23,7 @@ public class LessonReservationController {
     // 유저 본인 예약 생성
     @PostMapping
     public ApiRespDto<ReservationResponse> createReservation(
-            @RequestBody ReservationCreateRequest req,
+            @Valid @RequestBody ReservationCreateRequest req,
             @AuthenticationPrincipal PrincipalUser principalUser
             ) {
         return reservationService.createReservation(req, principalUser);

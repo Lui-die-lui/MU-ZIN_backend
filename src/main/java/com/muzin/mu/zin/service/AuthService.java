@@ -1,7 +1,6 @@
 package com.muzin.mu.zin.service;
 
 import com.muzin.mu.zin.dto.ApiRespDto;
-import com.muzin.mu.zin.dto.auth.PasswordChangeRequest;
 import com.muzin.mu.zin.dto.auth.PrincipalDto;
 import com.muzin.mu.zin.dto.auth.SigninRequest;
 import com.muzin.mu.zin.dto.auth.SignupRequest;
@@ -9,47 +8,64 @@ import com.muzin.mu.zin.entity.OAuth2UserEntity;
 import com.muzin.mu.zin.entity.Role;
 import com.muzin.mu.zin.entity.User;
 import com.muzin.mu.zin.entity.UserRole;
-import com.muzin.mu.zin.exception.DuplicateEmailException;
+import com.muzin.mu.zin.exception.ApiException;
 import com.muzin.mu.zin.repository.OAuth2UserRepository;
 import com.muzin.mu.zin.repository.RoleRepository;
 import com.muzin.mu.zin.repository.UserRepository;
 import com.muzin.mu.zin.security.jwt.JwtUtils;
 import com.muzin.mu.zin.security.model.PrincipalUser;
+import com.muzin.mu.zin.security.ratelimit.LoginAttemptService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
 
+    private static final Map<String, String> PROVIDER_NAMES = Map.of(
+            "google", "구글", "naver", "네이버", "kakao", "카카오");
+
     private final OAuth2UserRepository oAuth2UserRepository;
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
+    private final UsernameGenerator usernameGenerator;
+    private final LoginAttemptService loginAttemptService;
 
     // 회원가입
     @Transactional
-    public ApiRespDto<?> signup(SignupRequest request) {
-//        Optional<User> user = userRepository.findByEmail(request.email());
-//        if(user.isPresent()) {
-//            return new ApiRespDto<>("failed", "이미 사용중인 이메일입니다.", null);
-//        }
-        // 이메일 중복 검증
-        if (userRepository.existsByEmail(request.email())) {
-            throw new DuplicateEmailException("이미 사용중인 이메일입니다.");
+    public void signup(SignupRequest request) {
+        String email = request.email().trim();
+
+        if (!request.password().equals(request.passwordConfirm())) {
+            throw new IllegalArgumentException("비밀번호 확인이 일치하지 않습니다.");
+        }
+
+        // 이메일 중복 검증 (대소문자 무시) - 소셜로 가입된 이메일이면 어떤 소셜인지 알려줌
+        Optional<User> existing = userRepository.findByEmailIgnoreCase(email);
+        if (existing.isPresent()) {
+            List<OAuth2UserEntity> links = oAuth2UserRepository.findAllByUser_UserId(existing.get().getUserId());
+            if (!links.isEmpty()) {
+                String name = providerName(links.get(0).getProvider());
+                throw ApiException.conflict("EMAIL_ALREADY_REGISTERED",
+                        "이미 " + name + " 계정으로 가입된 이메일입니다. " + name + " 로그인을 이용해주세요.");
+            }
+            throw ApiException.conflict("EMAIL_ALREADY_REGISTERED", "이미 사용중인 이메일입니다.");
         }
 
         User newUser = User
                 .builder()
-                .email(request.email())
+                .email(email)
                 .password(passwordEncoder.encode(request.password()))
-                .username(request.email())
+                .username(usernameGenerator.generate(email)) // 공개 화면에 이메일이 노출되지 않게
                 // emailVerified, artistStatus, userRoles 는 @Builder.Default로 기본값 사용
                 .build();
 
@@ -65,45 +81,63 @@ public class AuthService {
         // 편의 메서드
         newUser.addUserRole(userRole);
 
-        // 저장 (User에 cascade = ALL 걸려있으면 User만 save 해도 UserRole 같이 저장됨)
+        // 저장 (User에 cascade = ALL 걸려있어서 User만 save 해도 UserRole 같이 저장됨)
         userRepository.save(newUser);
-
-        return new ApiRespDto<>("success", "회원가입이 완료되었습니다.", null);
     }
 
-    public ApiRespDto<?> signin(SigninRequest request) {
-        // 이메일로 유저 조회
-        User user = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new RuntimeException("이메일 또는 비밀번호가 올바르지 않습니다."));
+    @Transactional(readOnly = true)
+    public ApiRespDto<String> signin(SigninRequest request) {
+        String email = request.email().trim();
 
+        // 5회 실패로 잠긴 이메일이면 비밀번호 확인 전에 429 (잠긴 동안은 맞는 비밀번호도 거부)
+        loginAttemptService.checkNotLocked(email);
 
-        // 비밀번호 비교
-        if (!passwordEncoder.matches(request.password(), user.getPassword())) {
-            return new ApiRespDto<>("failed", "이메일 또는 비밀번호가 올바르지 않습니다.",null);
+        Optional<User> found = userRepository.findByEmailIgnoreCase(email);
+
+        // 이메일이 없든 비밀번호가 틀리든 같은 응답 + 같은 횟수 차감 (응답 차이로 가입 여부가 드러나지 않게)
+        if (found.isEmpty() || !passwordEncoder.matches(request.password(), found.get().getPassword())) {
+            int remaining = loginAttemptService.recordFailure(email); // 5번째 실패면 여기서 429
+
+            // 소셜 가입 계정은 비밀번호가 랜덤값이라 일반 로그인 불가 -> 가입 방식 안내
+            // (회원가입 화면에서 이미 가입 여부를 알려주므로 여기서 알려줘도 추가로 노출되는 정보는 없음)
+            if (found.isPresent()) {
+                List<OAuth2UserEntity> links = oAuth2UserRepository.findAllByUser_UserId(found.get().getUserId());
+                if (!links.isEmpty()) {
+                    String name = providerName(links.get(0).getProvider());
+                    throw ApiException.unauthorized("SOCIAL_ACCOUNT",
+                            name + " 계정으로 가입된 이메일입니다. " + name + " 로그인을 이용해주세요.");
+                }
+            }
+            throw ApiException.unauthorized("INVALID_CREDENTIALS",
+                    "이메일 또는 비밀번호가 올바르지 않습니다. (남은 시도 " + remaining + "회)");
+        }
+
+        User user = found.get();
+        loginAttemptService.recordSuccess(email);
+
+        if (user.isSuspended()) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "ACCOUNT_SUSPENDED", "이용이 정지된 계정입니다. 관리자에게 문의해주세요.");
         }
 
         String accessToken = jwtUtils.generateAccessToken(user.getUserId());
         return new ApiRespDto<>("success", "로그인에 성공했습니다.", accessToken);
     }
 
-    // principal getUsername(로그인 하게 해주는 값)이 email인데 username 컬럼이 존재해서 객체 다시 정제해서 보내야함 진짜 짜증남
+    // principal getUsername(로그인 하게 해주는 값)이 email인데 username 컬럼이 존재해서 객체 다시 정제해서 보내야함
     @Transactional(readOnly = true)
     public ApiRespDto<PrincipalDto> getPrincipalDto(PrincipalUser principal) {
         if (principal == null) {
-            return new ApiRespDto<>("failed", "인증되지 않은 사용자입니다.", null);
+            throw ApiException.unauthorized("UNAUTHORIZED", "인증되지 않은 사용자입니다.");
         }
 
         User user = userRepository.findById(principal.getUserId())
-                .orElseThrow(() -> new IllegalArgumentException("해당 유저가 존재하지 않습니다."));
+                .orElseThrow(() -> ApiException.unauthorized("UNAUTHORIZED", "해당 유저가 존재하지 않습니다."));
 
-        Optional<OAuth2UserEntity> oauth2Opt =
-                oAuth2UserRepository.findByUser_UserId(user.getUserId());
+        // 소셜 연동이 여러 개일 수 있어서 List로 조회 (첫 번째 provider 표시)
+        List<OAuth2UserEntity> links = oAuth2UserRepository.findAllByUser_UserId(user.getUserId());
+        String oauth2Provider = links.isEmpty() ? null : links.get(0).getProvider();
 
-        String oauth2Provider = oauth2Opt
-                .map(OAuth2UserEntity::getProvider)
-                .orElse(null);
-
-        boolean canChangePassword = oauth2Opt.isEmpty(); // 소셜 로그인 유저가 아닐 때 비번 변경 가능
+        boolean canChangePassword = links.isEmpty(); // 소셜 로그인 유저가 아닐 때 비번 변경 가능
 
         PrincipalDto dto = new PrincipalDto(
                 user.getUserId(),
@@ -120,5 +154,7 @@ public class AuthService {
         return new ApiRespDto<>("success","", dto);
     }
 
-
+    private String providerName(String provider) {
+        return PROVIDER_NAMES.getOrDefault(provider, provider);
+    }
 }

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.security.Key;
+import java.time.Duration;
 import java.util.Date;
 
 @Component // JWT 관련 기능들을 모아둔 도구 클래스(JwtUtils)를 스프링 컨테이너에 등록해둔 상태
@@ -38,12 +39,15 @@ public class JwtUtils {
                 .compact(); // 문자 직렬화
     }
 
-    // 이거는 그대로 (이메일 인증용)
+    // 이메일 인증 링크 유효시간 = 인증 메일 재발송 대기시간 (MailService 와 공유)
+    public static final Duration VERIFY_TOKEN_TTL = Duration.ofMinutes(3);
+
+    // 이메일 인증용
     public String generateVerifyToken(String id) {
         return Jwts.builder()
                 .subject("VerifyToken") // SMTP 인증용 토큰
                 .id(id)
-                .expiration(new Date(new Date().getTime() + (1000L * 60L * 3L)))
+                .expiration(new Date(System.currentTimeMillis() + VERIFY_TOKEN_TTL.toMillis()))
                 .signWith(KEY)
                 .compact();
     }

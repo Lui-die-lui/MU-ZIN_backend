@@ -23,5 +23,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByEmail(String email);
 
+    // 이메일 중복 판단은 대소문자 구분 없이 (Foo@x.com / foo@x.com 중복 가입 방지)
+    Optional<User> findByEmailIgnoreCase(String email);
+
     boolean existsByUsername(String username);
 }

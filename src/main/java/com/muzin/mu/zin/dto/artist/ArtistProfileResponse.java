@@ -5,6 +5,7 @@ import com.muzin.mu.zin.dto.region.MainRegionResponse;
 import com.muzin.mu.zin.dto.region.ServiceRegionResponse;
 import com.muzin.mu.zin.entity.ArtistStatus;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public record ArtistProfileResponse(
@@ -18,6 +19,10 @@ public record ArtistProfileResponse(
         ArtistStatus status,
         List<InstrumentResponse> instruments,
         MainRegionResponse mainRegion,
-        List<ServiceRegionResponse> serviceRegions
+        List<ServiceRegionResponse> serviceRegions,
+        // 신청자 본인 화면용: 반려 사유(반려됐을 때만) / 마지막 제출 시각
+        String rejectReasonTitle,
+        String rejectedReason,
+        LocalDateTime submittedDt
 ) {
 }

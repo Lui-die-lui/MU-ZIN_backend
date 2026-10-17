@@ -79,6 +79,14 @@ public class LessonReservation extends BaseTimeEntity {
     @Column(name = "completion_source")
     private CompletionSource completionSource;
 
+    @Column(name = "expired_dt")
+    private LocalDateTime expiredDt;
+
+    // 낙관적 락: 아티스트 확정과 유저 취소가 동시에 들어오는 등 같은 예약을 동시에 바꾸면 한쪽은 409
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
 
     // 도메인 메서드
 
@@ -98,10 +106,7 @@ public class LessonReservation extends BaseTimeEntity {
     }
 
     public void cancel() {
-        if (this.status == ReservationStatus.COMPLETED ||
-                this.status == ReservationStatus.CANCELED ||
-                this.status == ReservationStatus.REJECTED ||
-                this.status == ReservationStatus.COMPLETION_PENDING) {
+        if (this.status != ReservationStatus.REQUESTED && this.status != ReservationStatus.CONFIRMED) {
             throw new IllegalStateException("취소할 수 없는 예약 상태입니다.");
         }
 
@@ -127,6 +132,15 @@ public class LessonReservation extends BaseTimeEntity {
         this.status = ReservationStatus.COMPLETED;
         this.completedDt = TimeDefaults.nowKst();
         this.completionSource = CompletionSource.ARTIST;
+    }
+
+    // 아티스트가 응답하지 않은 채 레슨 시작 시간이 지난 요청
+    public void expire() {
+        if (this.status != ReservationStatus.REQUESTED) {
+            throw new IllegalStateException("만료 처리할 수 없는 예약 상태입니다.");
+        }
+        this.status = ReservationStatus.EXPIRED;
+        this.expiredDt = TimeDefaults.nowKst();
     }
 
     public void autoComplete() {

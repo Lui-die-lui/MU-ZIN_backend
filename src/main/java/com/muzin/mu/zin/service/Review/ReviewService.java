@@ -1,5 +1,6 @@
 package com.muzin.mu.zin.service.Review;
 
+import com.muzin.mu.zin.common.TimeDefaults;
 import com.muzin.mu.zin.dto.Review.*;
 import com.muzin.mu.zin.entity.ArtistProfile;
 import com.muzin.mu.zin.entity.Review.Review;
@@ -15,7 +16,6 @@ import com.muzin.mu.zin.repository.Review.ReviewReplyRepository;
 import com.muzin.mu.zin.repository.Review.ReviewRepository;
 import com.muzin.mu.zin.repository.lesson.LessonReservationRepository;
 import lombok.RequiredArgsConstructor;
-import org.hibernate.boot.model.naming.IllegalIdentifierException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -216,7 +216,7 @@ public class ReviewService {
                 .toList();
 
         if (normalizedKeywordIds.size() > 3) {
-            throw new IllegalIdentifierException("리뷰 키워드는 최대 3개까지 선택할 수 있습니다.");
+            throw new IllegalArgumentException("리뷰 키워드는 최대 3개까지 선택할 수 있습니다.");
         }
 
         if (normalizedKeywordIds.isEmpty()) {
@@ -251,14 +251,14 @@ public class ReviewService {
             throw new IllegalArgumentException("레슨 완료 시간이 없어 리뷰를 작성할 수 없습니다.");
         }
 
-        if (completedDt.plusDays(14).isBefore(LocalDateTime.now())) {
+        if (completedDt.plusDays(14).isBefore(TimeDefaults.nowKst())) {
             throw new IllegalArgumentException("리뷰 작성 가능 기간이 지났습니다.");
         }
     }
 
     // 리뷰 수정 가능 기간 검증
     private void validateReviewEditable(Review review) {
-        if (review.getCreateDt().plusDays(7).isBefore(LocalDateTime.now())) {
+        if (review.getCreateDt().plusDays(7).isBefore(TimeDefaults.nowKst())) {
             throw new IllegalArgumentException("리뷰 수정 가능 기간이 지났습니다.");
         }
     }

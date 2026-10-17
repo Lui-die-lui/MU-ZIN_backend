@@ -41,6 +41,12 @@ public interface LessonReservationRepository extends JpaRepository<LessonReserva
             @Param("status")ReservationStatus status
             );
 
+    // 진행 중인 예약(요청 대기/확정/완료 대기) 개수 - 레슨 핵심 정보 수정·삭제 잠금 판단
+    long countByLesson_LessonIdAndStatusIn(Long lessonId, java.util.Collection<ReservationStatus> statuses);
+
+    // 해당 시간에 예약 이력(상태 무관)이 있는지 - 있으면 삭제 대신 닫기만 허용
+    boolean existsByTimeSlot_TimeSlotId(Long timeSlotId);
+
     // 특정 레슨의 예약 목록
     @EntityGraph(attributePaths = {"timeSlot", "lesson"})
     List<LessonReservation> findByLesson_LessonIdOrderByRequestedDtDesc(Long lessonId);
@@ -71,6 +77,20 @@ public interface LessonReservationRepository extends JpaRepository<LessonReserva
              and ts.endDt <= :baseTime
     """)
     List<LessonReservation> findReservationsToAutoComplete(@Param("baseTime") LocalDateTime baseTime);
+
+    // 아티스트가 응답하지 않은 채 레슨 시작 시간이 지난 요청 (만료 대상)
+    @Query("""
+           select r
+           from LessonReservation r
+           join fetch r.timeSlot ts
+           join fetch r.lesson l
+           join fetch l.artistProfile ap
+           join fetch ap.user au
+           join fetch r.user u
+           where r.status = com.muzin.mu.zin.entity.reservation.ReservationStatus.REQUESTED
+             and ts.startDt <= :now
+    """)
+    List<LessonReservation> findRequestedReservationsToExpire(@Param("now") LocalDateTime now);
 
 
 }

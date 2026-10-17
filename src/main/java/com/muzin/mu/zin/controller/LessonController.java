@@ -38,7 +38,7 @@ public class LessonController {
     @PatchMapping("/me/{lessonId}")
     public ApiRespDto<?> updateLesson(
             @PathVariable Long lessonId,
-            @RequestBody LessonUpdateRequest req,
+            @Valid @RequestBody LessonUpdateRequest req,
             @AuthenticationPrincipal PrincipalUser principalUser
             ) {
         return lessonService.updateLesson(lessonId, req, principalUser);

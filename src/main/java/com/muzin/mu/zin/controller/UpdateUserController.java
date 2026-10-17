@@ -6,6 +6,7 @@ import com.muzin.mu.zin.dto.auth.UpdateProfileImageRequest;
 import com.muzin.mu.zin.dto.auth.UpdateUsernameRequest;
 import com.muzin.mu.zin.security.model.PrincipalUser;
 import com.muzin.mu.zin.service.lesson.UpdateUserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -25,7 +26,7 @@ public class UpdateUserController {
     @PatchMapping("/username")
     public ResponseEntity<ApiRespDto<?>> updateUsername(
             @AuthenticationPrincipal PrincipalUser principalUser,
-            @RequestBody UpdateUsernameRequest req
+            @Valid @RequestBody UpdateUsernameRequest req
     ) {
         updateUserService.updateUsername(principalUser.getUserId(), req.username());
         return ResponseEntity.ok(new ApiRespDto<>("success", "이름이 수정되었습니다.", null));
@@ -45,7 +46,7 @@ public class UpdateUserController {
     @PatchMapping("/password")
     public ApiRespDto<?> changePassword (
             @AuthenticationPrincipal PrincipalUser principalUser,
-            @RequestBody PasswordChangeRequest req
+            @Valid @RequestBody PasswordChangeRequest req
             ) {
         return updateUserService.changePassword(principalUser, req);
     }

@@ -15,6 +15,9 @@ import com.muzin.mu.zin.entity.ArtistProfile;
 import com.muzin.mu.zin.entity.ArtistStatus;
 import com.muzin.mu.zin.entity.User;
 import com.muzin.mu.zin.entity.instrument.Instrument;
+import com.muzin.mu.zin.entity.lesson.Lesson;
+import com.muzin.mu.zin.exception.ApiException;
+import com.muzin.mu.zin.repository.lesson.LessonRepository;
 import com.muzin.mu.zin.repository.ArtistInstrumentRepository;
 import com.muzin.mu.zin.repository.artist.ArtistProfileRepository;
 import com.muzin.mu.zin.repository.UserRepository;
@@ -26,7 +29,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.EnumSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.Optional;
 
 @Service
@@ -39,6 +46,13 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
     private final ArtistInstrumentRepository artistInstrumentRepository;
     private final InstrumentService instrumentService;
     private final ArtistStyleMapRepository artistStyleMapRepository;
+    private final LessonRepository lessonRepository;
+
+    // DB 컬럼 길이와 같은 기준 (넘으면 예전엔 DB 제약 오류 -> "이미 처리되었거나 중복된 요청" 이라는 엉뚱한 메시지가 나갔음)
+    public static final int BIO_MAX = 255;
+    public static final int CAREER_MAX = 2000;
+    public static final int MAJOR_MAX = 50;
+    public static final int ADDRESS_MAX = 120;
 
 
     @Override
@@ -52,10 +66,6 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
 //                .orElseThrow(() -> new IllegalStateException("아티스트 프로필이 없습니다."));
 //
 //        return new ApiRespDto<>("success","조회 완료",toResponse(profile));
-        if (principalUser == null) {
-            return new ApiRespDto<>("failed", "로그인이 필요합니다.", null);
-        }
-
         Optional<ArtistProfile> opt = artistProfileRepository.findByUser_UserId(principalUser.getUserId());
 
         if (opt.isEmpty()) {
@@ -123,8 +133,11 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
         User user = getUserOrThrow(principalUser.getUserId());
         requireStatus(user, EnumSet.of(ArtistStatus.APPROVED));
 
+        // 승인된 아티스트는 소개/경력을 비울 수 없음 (신청할 때 필수였던 항목)
+        validateProfileInput(req, true);
+
         ArtistProfile profile = getProfileOrThrow(user.getUserId());
-        profile.updateProfile(req.bio(), req.career(), profile.getMajorName()); // 전공을 수정 가능x, 그냥 원래 프로필
+        profile.updateProfile(req.bio().trim(), req.career().trim(), profile.getMajorName()); // 전공을 수정 가능x, 그냥 원래 프로필
 
         applyMainRegion(profile, req.mainRegion());
         replaceServiceRegions(profile, req.serviceRegions());
@@ -157,6 +170,30 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
 
         // 승인된 악기만 통과 + 없는 id 검증까지
         List<Instrument> instruments = instrumentService.validateAndGetApprovedByIds(uniqueIds);
+
+        if (user.getArtistStatus() == ArtistStatus.APPROVED) {
+            // 승인된 아티스트는 악기가 최소 1개 있어야 레슨을 만들 수 있음
+            if (uniqueIds.isEmpty()) {
+                throw new IllegalArgumentException("악기를 1개 이상 선택해주세요.");
+            }
+            // 레슨에서 쓰고 있는 악기를 빼면 그 레슨은 "내 악기가 아닌 악기"를 갖게 됨 (수정 화면에서 악기를 다시 고를 수 없음)
+            Set<Long> next = Set.copyOf(uniqueIds);
+            Map<String, List<String>> inUse = new LinkedHashMap<>();
+            for (Lesson lesson : lessonRepository
+                    .findAllByArtistProfile_ArtistProfileIdAndDeletedDtIsNullOrderByLessonIdDesc(profile.getArtistProfileId())) {
+                Instrument inst = lesson.getInstrument();
+                if (!next.contains(inst.getInstId())) {
+                    inUse.computeIfAbsent(inst.getInstName(), k -> new java.util.ArrayList<>()).add(lesson.getTitle());
+                }
+            }
+            if (!inUse.isEmpty()) {
+                String detail = inUse.entrySet().stream()
+                        .map(e -> "'" + e.getKey() + "' (" + String.join(", ", e.getValue()) + ")")
+                        .collect(Collectors.joining(", "));
+                throw ApiException.conflict("INSTRUMENT_IN_USE",
+                        "레슨에서 쓰고 있는 악기는 뺄 수 없어요: " + detail + ". 레슨의 악기를 먼저 바꾸거나 레슨을 삭제해주세요.");
+            }
+        }
 
         // 기존 매핑 전체 삭제 - 새로 갈아끼움
 //        artistInstrumentRepository.deleteByArtistProfile_ArtistProfileId(profile.getArtistProfileId());
@@ -220,7 +257,10 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
                 profile.getUser().getArtistStatus(), // 상태 소유자 = 유저 이기때문에 dto 내에 있어도 이렇게 가져와야함
                 instrumentResponses,
                 mainRegion,
-                serviceRegions
+                serviceRegions,
+                profile.getRejectReasonTitle(),
+                profile.getRejectedReason(),
+                profile.getSubmittedDt()
         );
 
         return new ApiRespDto<>("success", "악기 목록이 저장되었습니다.", resp);
@@ -229,11 +269,12 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
     // 아티스트 검색 상세페이지 디테일
     @Override
     public ApiRespDto<ArtistProfileDetailResponse> getArtistProfileDetail(Long artistProfileId) {
+        // 없는 프로필 / 승인되지 않은 아티스트 모두 404 로 같은 안내 (예전: 400 / 409 로 달라서 존재 여부가 드러나고 화면 안내도 제각각)
         ArtistProfile profile = artistProfileRepository.findById(artistProfileId)
-                .orElseThrow(() -> new IllegalArgumentException("아티스트 프로필을 찾을 수 없습니다."));
+                .orElseThrow(() -> ApiException.notFound("아티스트를 찾을 수 없어요."));
 
         if (profile.getUser().getArtistStatus() != ArtistStatus.APPROVED) {
-            throw new IllegalStateException("승인된 아티스트만 조회 가능합니다.");
+            throw ApiException.notFound("아티스트를 찾을 수 없어요.");
         }
 
         List<LessonStyleTagResponse> styleTags = artistStyleMapRepository
@@ -335,7 +376,10 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
                 profile.getUser().getArtistStatus(),
                 instruments,
                 mainRegion,
-                serviceRegions
+                serviceRegions,
+                profile.getRejectReasonTitle(),
+                profile.getRejectedReason(),
+                profile.getSubmittedDt()
         );
     }
 
@@ -427,9 +471,40 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
         return value == null || value.isBlank();
     }
 
+    private String nullToEmpty(String value) {
+        return value == null ? "" : value;
+    }
+
+    // 프로필 입력 검증 (requireFilled: 소개·경력 필수 여부)
+    private void validateProfileInput(ArtistProfileUpsertRequest req, boolean requireFilled) {
+        if (requireFilled) {
+            if (isBlank(req.bio())) throw new IllegalArgumentException("소개를 입력해주세요.");
+            if (isBlank(req.career())) throw new IllegalArgumentException("경력을 입력해주세요.");
+        }
+        checkLength(req.bio(), BIO_MAX, "소개는");
+        checkLength(req.career(), CAREER_MAX, "경력은");
+        checkLength(req.majorName(), MAJOR_MAX, "전공은");
+        MainActivityRegionRequest main = req.mainRegion();
+        if (main != null) {
+            checkLength(main.detailAddress(), ADDRESS_MAX, "상세 주소는");
+            checkLength(main.addressLabel(), ADDRESS_MAX, "주소는");
+        }
+    }
+
+    private void checkLength(String value, int max, String label) {
+        if (value != null && value.length() > max) {
+            throw new IllegalArgumentException(label + " " + max + "자 이하로 입력해주세요.");
+        }
+    }
+
 
     // 아티스트 전환 로직 upsert 공통 메서드
-    private ArtistProfile upsertArtistProfile(User user, ArtistProfileUpsertRequest req) {
+    private ArtistProfile upsertArtistProfile(User user, ArtistProfileUpsertRequest raw) {
+        // 임시 저장은 비어 있어도 되지만 길이는 지켜야 함 (null 은 빈 문자열로 - 컬럼이 NOT NULL)
+        validateProfileInput(raw, false);
+        ArtistProfileUpsertRequest req = new ArtistProfileUpsertRequest(
+                nullToEmpty(raw.bio()), nullToEmpty(raw.career()), nullToEmpty(raw.majorName()),
+                raw.mainRegion(), raw.serviceRegions());
         ArtistProfile profile = artistProfileRepository.findByUser_UserId(user.getUserId())
                 .orElseGet(() -> ArtistProfile.builder()
                         .user(user)

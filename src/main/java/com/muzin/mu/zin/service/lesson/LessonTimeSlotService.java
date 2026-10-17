@@ -13,7 +13,10 @@ import com.muzin.mu.zin.entity.lesson.TimeSlotStatus;
 import com.muzin.mu.zin.policy.TimeSlotPolicy;
 import com.muzin.mu.zin.repository.artist.ArtistProfileRepository;
 import com.muzin.mu.zin.repository.lesson.LessonRepository;
+import com.muzin.mu.zin.repository.lesson.LessonReservationRepository;
 import com.muzin.mu.zin.repository.lesson.LessonTimeSlotRepository;
+import com.muzin.mu.zin.entity.ArtistStatus;
+import com.muzin.mu.zin.exception.ApiException;
 import com.muzin.mu.zin.security.model.PrincipalUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -31,6 +34,7 @@ public class LessonTimeSlotService {
     private final LessonRepository lessonRepository;
     private final LessonTimeSlotRepository lessonTimeSlotRepository;
     private final ArtistProfileRepository artistProfileRepository;
+    private final LessonReservationRepository reservationRepository;
 
     // 유저용 OPEN 슬롯 조회
     @Transactional(readOnly = true)
@@ -42,16 +46,21 @@ public class LessonTimeSlotService {
     ) {
 
         Lesson lesson = lessonRepository.findById(lessonId)
-                .orElseThrow(() -> new IllegalArgumentException("레슨이 없습니다."));
+                .orElseThrow(() -> ApiException.notFound("레슨이 없습니다."));
 
         // 빈배열 말고 예외 던지는중
         if (lesson.isDeleted()) {
-            throw new IllegalArgumentException("삭제된 레슨입니다.");
+            throw ApiException.notFound("삭제된 레슨입니다.");
         }
 
         // 비활성 레슨은 슬롯 조회/예약 흐름 차단
         if (lesson.getStatus() != LessonStatus.ACTIVE) {
-            throw new IllegalArgumentException("비활성 레슨입니다.");
+            throw ApiException.notFound("현재 공개되지 않은 레슨입니다.");
+        }
+
+        // 승인된 아티스트의 레슨만 공개
+        if (lesson.getArtistProfile().getUser().getArtistStatus() != ArtistStatus.APPROVED) {
+            throw ApiException.notFound("레슨이 없습니다.");
         }
 
         // 기본값 / 보정
@@ -72,7 +81,7 @@ public class LessonTimeSlotService {
 
         List<TimeSlotResponse> resp = slots.stream()
                 .filter(s -> s.getStatus() == TimeSlotStatus.OPEN)
-                .filter(s-> !s.getStartDt().isBefore(LocalDateTime.now())) // 과거시간 조회 막음
+                .filter(s-> !s.getStartDt().isBefore(now)) // 과거시간 조회 막음 (KST 기준)
                 .filter(s -> !applyDays || daysOfWeek.contains(toIsoDow(s.getStartDt())))
                 .filter(s -> !applyParts || timeParts.contains(toTimePart(s.getStartDt())))
                 .map(this::toResponse)
@@ -129,6 +138,10 @@ public class LessonTimeSlotService {
                 .distinct()
                 .toList();
 
+        if (unique.size() > TimeSlotPolicy.MAX_SLOTS_PER_REQUEST) {
+            throw new IllegalArgumentException("한 번에 추가할 수 있는 시간은 " + TimeSlotPolicy.MAX_SLOTS_PER_REQUEST + "개까지예요. 기간이나 요일을 나눠서 추가해주세요.");
+        }
+
         // 과거/현재 + 오늘 기준 90일 상한 검증
         // 기존 invalid 리스트 만들 필요 없이 policy로 통일
         TimeSlotPolicy.validateStartDts(unique, now);
@@ -153,6 +166,23 @@ public class LessonTimeSlotService {
 
         if (existingCount + willCreate > maxPerLesson) {
             throw new IllegalArgumentException("레슨당 타임슬롯은 최대 " + maxPerLesson + "개까지 생성할 수 있습니다.");
+        }
+
+        // 같은 레슨 안에서 시간이 겹치면 거부 (예: 60분 레슨에 10:00 과 10:30)
+        LocalDateTime minStart = unique.stream().min(LocalDateTime::compareTo).orElseThrow();
+        LocalDateTime maxStart = unique.stream().max(LocalDateTime::compareTo).orElseThrow();
+        List<LocalDateTime> nearby = lessonTimeSlotRepository
+                .findAllByLesson_LessonIdAndStartDtBetweenOrderByStartDtAsc(
+                        lessonId, minStart.minusMinutes(duration), maxStart.plusMinutes(duration))
+                .stream()
+                .map(LessonTimeSlot::getStartDt)
+                .toList();
+        List<LocalDateTime> newOnly = unique.stream().filter(s -> !nearby.contains(s)).toList();
+        LocalDateTime[] overlap = TimeSlotPolicy.findOverlap(newOnly, nearby, duration);
+        if (overlap != null) {
+            throw ApiException.conflict("SLOT_OVERLAP",
+                    TimeSlotPolicy.format(overlap[0]) + " 시간과 " + TimeSlotPolicy.format(overlap[1])
+                            + " 시간이 겹쳐요. (수업 " + duration + "분)");
         }
 
         List<LessonTimeSlot> toSave = unique.stream()
@@ -181,45 +211,67 @@ public class LessonTimeSlotService {
     }
 
 
-    // 아티스트 슬롯 닫기/열기
+    /*
+     * 아티스트 시간 닫기/열기/삭제 규칙
+     *  - 요청 대기(PENDING)·예약 확정(BOOKED) 시간은 닫기/삭제 불가
+     *    (예전엔 PENDING 을 닫을 수 있어서 그 요청을 확정할 수 없는 상태로 남았음)
+     *  - 이미 지난 시간은 닫기/열기 불가
+     *  - 예약 이력이 있는 시간은 삭제 불가 (이력 보존) -> 닫기만 가능
+     */
     @Transactional
     public ApiRespDto<?> closeSlot(Long timeSlotId, PrincipalUser principalUser) {
-
         LessonTimeSlot slot = getArtistSlotOrThrow(timeSlotId, principalUser);
+        rejectIfReserved(slot, "닫을");
+        rejectIfPast(slot);
 
-        if (slot.getStatus() == TimeSlotStatus.BOOKED) {
-            throw new IllegalArgumentException("예약된 슬롯은 닫을 수 없습니다.");
+        if (slot.getStatus() == TimeSlotStatus.CLOSED) {
+            throw ApiException.conflict("이미 닫힌 시간입니다.");
         }
-        slot.close();
-        return new ApiRespDto<>("success","슬롯이 닫혔습니다.",null);
-
+        slot.closeFromOpen();
+        return new ApiRespDto<>("success", "시간을 닫았어요. 이 시간은 예약을 받지 않아요.", null);
     }
 
     @Transactional
     public ApiRespDto<?> openSlot(Long timeSlotId, PrincipalUser principalUser) {
-
         LessonTimeSlot slot = getArtistSlotOrThrow(timeSlotId, principalUser);
+        rejectIfReserved(slot, "다시 열");
+        rejectIfPast(slot);
 
-        if (slot.getStatus() == TimeSlotStatus.BOOKED) {
-            throw new IllegalArgumentException("예약된 슬롯은 열 수 없습니다.");
+        if (slot.getStatus() == TimeSlotStatus.OPEN) {
+            throw ApiException.conflict("이미 예약을 받고 있는 시간입니다.");
         }
-        slot.open();
-        return new ApiRespDto<>("success", "슬롯이 열렸습니다.", null);
+        slot.reopenFromClosed();
+        return new ApiRespDto<>("success", "시간을 다시 열었어요.", null);
     }
 
-    // 아티스트 타임 슬롯 삭제
     @Transactional
     public ApiRespDto<?> deleteSlot(Long timeSlotId, PrincipalUser principalUser) {
-
         LessonTimeSlot slot = getArtistSlotOrThrow(timeSlotId, principalUser);
+        rejectIfReserved(slot, "삭제할");
 
-        if (slot.getStatus() == TimeSlotStatus.BOOKED) {
-            throw new IllegalArgumentException("예약된 슬롯은 삭제할 수 없습니다.");
+        if (reservationRepository.existsByTimeSlot_TimeSlotId(timeSlotId)) {
+            throw ApiException.conflict("SLOT_HAS_HISTORY",
+                    "예약 이력이 있는 시간은 삭제할 수 없어요. 대신 닫기를 이용해주세요.");
         }
 
         lessonTimeSlotRepository.delete(slot);
-        return new ApiRespDto<>("success", "슬롯이 삭제되었습니다.", null);
+        return new ApiRespDto<>("success", "시간을 삭제했어요.", null);
+    }
 
+    private void rejectIfReserved(LessonTimeSlot slot, String action) {
+        if (slot.getStatus() == TimeSlotStatus.PENDING) {
+            throw ApiException.conflict("SLOT_RESERVED",
+                    "예약 요청이 들어온 시간은 " + action + " 수 없어요. 요청을 먼저 확정하거나 거절해주세요.");
+        }
+        if (slot.getStatus() == TimeSlotStatus.BOOKED) {
+            throw ApiException.conflict("SLOT_RESERVED", "예약이 확정된 시간은 " + action + " 수 없어요.");
+        }
+    }
+
+    private void rejectIfPast(LessonTimeSlot slot) {
+        if (!slot.getStartDt().isAfter(TimeDefaults.nowKst())) {
+            throw ApiException.conflict("SLOT_PAST", "이미 지난 시간입니다.");
+        }
     }
 
 
