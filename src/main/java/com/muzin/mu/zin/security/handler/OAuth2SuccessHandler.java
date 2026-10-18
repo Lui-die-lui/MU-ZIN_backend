@@ -37,9 +37,9 @@ import java.util.UUID;
  *       (제공자가 이메일 소유를 보장하지 않으면 남의 계정에 붙을 수 있어서)
  *  - 없으면 새 계정 생성 + 소셜 연동
  *
- * TODO(보류): 소셜 가입 유저의 이메일 인증 처리 방식 결정
- *  - 제공자의 이메일 인증 여부(Google email_verified, Kakao is_email_verified)를 믿고 바로 인증 처리할지
- *  - 일반 가입처럼 인증 메일을 따로 보낼지
+ * 이메일 인증:
+ *  - 제공자가 이메일 소유를 확인해준 경우(Google email_verified, Kakao is_email_valid + is_email_verified) 가입 시 바로 인증 완료
+ *  - 그 외(Naver 등)는 미인증으로 가입 -> 일반 가입과 같은 인증 메일로 확인
  */
 @Component
 @RequiredArgsConstructor
@@ -71,6 +71,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         String provider = principal.getAttribute("provider");
         String providerUserId = principal.getAttribute("providerUserId");
         String email = principal.getAttribute("email");
+        boolean providerEmailVerified = Boolean.TRUE.equals(principal.getAttribute("emailVerified"));
 
         if (provider == null || providerUserId == null) {
             redirectError(request, response, "OAUTH2_MISSING", null);
@@ -86,6 +87,11 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                 return;
             }
             ensureUserRole(user);
+            // 이전에 미인증으로 가입했어도, 제공자가 같은 이메일을 확인해주면 인증 완료 (더티 체킹으로 저장)
+            if (providerEmailVerified && !Boolean.TRUE.equals(user.getEmailVerified())
+                    && email != null && email.trim().equalsIgnoreCase(user.getEmail())) {
+                user.setEmailVerified(true);
+            }
             redirectWithToken(request, response, user);
             return;
         }
@@ -110,6 +116,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                 .email(email.trim())
                 .username(usernameGenerator.generate(email.trim())) // 공개 화면에 이메일이 노출되지 않게
                 .password(passwordEncoder.encode("oauth2-" + UUID.randomUUID()))
+                .emailVerified(providerEmailVerified)
                 .build();
 
         userRepository.save(newUser);

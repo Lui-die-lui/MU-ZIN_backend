@@ -59,7 +59,7 @@ public class Review extends BaseTimeEntity {
     @Column(nullable = false)
     private Integer rating;
 
-    @Column(length = 255)
+    @Column(length = 500)
     private String content;
 
     @Column(name = "delete_dt")

@@ -16,6 +16,12 @@ public interface ArtistProfileRepository extends JpaRepository<ArtistProfile, Lo
     // ArtistProfile.user.userId 로 조건을 건다
     Optional<ArtistProfile> findByUser_UserId(Long userId);
 
+    // 여러 아티스트의 활동 가능 지역 한 번에 (레슨 추천에서 어느 지역으로 연결됐는지 표시)
+    @org.springframework.data.jpa.repository.Query(
+            "select r from ArtistServiceRegion r where r.artistProfile.artistProfileId in :ids")
+    java.util.List<com.muzin.mu.zin.entity.artist.ArtistServiceRegion> findServiceRegionsByArtistIds(
+            @org.springframework.data.repository.query.Param("ids") java.util.Collection<Long> artistProfileIds);
+
     // 해당 유저가 존재 하는가
     boolean existsByUser_UserId(Long userId);
 
