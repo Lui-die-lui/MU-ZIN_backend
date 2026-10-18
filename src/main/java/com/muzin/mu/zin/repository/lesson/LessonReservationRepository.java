@@ -93,4 +93,47 @@ public interface LessonReservationRepository extends JpaRepository<LessonReserva
     List<LessonReservation> findRequestedReservationsToExpire(@Param("now") LocalDateTime now);
 
 
+
+    // 채팅: 이 수강생과 아티스트 사이에 진행 중인 확정 예약이 있는지 (확정 · 완료 확인 중)
+    @Query("""
+            select count(r) > 0 from LessonReservation r
+            where r.user.userId = :userId and r.lesson.artistProfile.artistProfileId = :artistProfileId
+              and r.status in (com.muzin.mu.zin.entity.reservation.ReservationStatus.CONFIRMED,
+                               com.muzin.mu.zin.entity.reservation.ReservationStatus.COMPLETION_PENDING)
+            """)
+    boolean existsActiveBetween(@Param("userId") Long userId, @Param("artistProfileId") Long artistProfileId);
+
+    // 채팅: 마지막으로 완료된 레슨이 끝난 시각
+    @Query("""
+            select max(r.timeSlot.endDt) from LessonReservation r
+            where r.user.userId = :userId and r.lesson.artistProfile.artistProfileId = :artistProfileId
+              and r.status = com.muzin.mu.zin.entity.reservation.ReservationStatus.COMPLETED
+            """)
+    LocalDateTime findLastCompletedEnd(@Param("userId") Long userId, @Param("artistProfileId") Long artistProfileId);
+
+    // 채팅방 맥락: 이 둘 사이 최근 예약
+    @Query("""
+            select r from LessonReservation r join fetch r.lesson join fetch r.timeSlot
+            where r.user.userId = :userId and r.lesson.artistProfile.artistProfileId = :artistProfileId
+            order by r.timeSlot.startDt desc
+            """)
+    List<LessonReservation> findRecentBetween(@Param("userId") Long userId, @Param("artistProfileId") Long artistProfileId,
+                                             org.springframework.data.domain.Pageable pageable);
+
+    // 리뷰를 쓸 수 있는 예약: 내 완료 예약 + 작성 기간 안 + 리뷰를 쓴 적 없음 (삭제한 리뷰 포함)
+    @Query("""
+            select r from LessonReservation r
+            join fetch r.lesson l
+            join fetch l.artistProfile ap
+            join fetch ap.user
+            join fetch r.timeSlot
+            where r.user.userId = :userId
+              and r.status = :status
+              and r.completedDt >= :since
+              and not exists (select 1 from Review v where v.reservation = r)
+            order by r.completedDt desc
+            """)
+    List<LessonReservation> findReviewWritable(@Param("userId") Long userId,
+                                               @Param("status") ReservationStatus status,
+                                               @Param("since") LocalDateTime since);
 }

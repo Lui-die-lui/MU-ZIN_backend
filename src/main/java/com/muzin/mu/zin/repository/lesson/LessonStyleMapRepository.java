@@ -12,4 +12,10 @@ public interface LessonStyleMapRepository extends JpaRepository<LessonStyleMap, 
 
     List<LessonStyleMap> findAllByLesson_LessonId(Long lessonId);
 
+    // 여러 레슨의 스타일 태그 한 번에 (레슨 추천)
+    @org.springframework.data.jpa.repository.Query(
+            "select m from LessonStyleMap m join fetch m.lessonStyleTag where m.lesson.lessonId in :lessonIds")
+    List<LessonStyleMap> findAllWithTagByLessonIds(
+            @org.springframework.data.repository.query.Param("lessonIds") java.util.Collection<Long> lessonIds);
+
 }

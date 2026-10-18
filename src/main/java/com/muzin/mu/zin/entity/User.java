@@ -60,6 +60,11 @@ public class User extends BaseTimeEntity {
     private ArtistStatus artistStatus = ArtistStatus.NONE;
 
 
+    // 샘플(시연용) 계정 - 추천 화면에서 운영은 제외, 개발은 "샘플"로 표시 (app.sample-data.show)
+    @Builder.Default
+    @Column(name = "is_sample", nullable = false)
+    private boolean sample = false;
+
     // 계정 정지 시각 (null 이면 정상) - 정지되면 유효한 토큰이 있어도 모든 인증 API 차단
     @Column(name = "suspended_dt")
     private LocalDateTime suspendedDt;

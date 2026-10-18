@@ -8,6 +8,7 @@ import com.muzin.mu.zin.entity.reservation.ReservationStatus;
 import com.muzin.mu.zin.repository.UserRepository;
 import com.muzin.mu.zin.repository.lesson.LessonReservationRepository;
 import com.muzin.mu.zin.repository.lesson.LessonTimeSlotRepository;
+import com.muzin.mu.zin.service.chat.ChatService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,7 +34,8 @@ class LessonReservationCompletionTest {
                 reservationRepository,
                 mock(LessonTimeSlotRepository.class),
                 mock(UserRepository.class),
-                mock(ApplicationEventPublisher.class)
+                mock(ApplicationEventPublisher.class),
+                mock(ChatService.class)
         );
     }
 

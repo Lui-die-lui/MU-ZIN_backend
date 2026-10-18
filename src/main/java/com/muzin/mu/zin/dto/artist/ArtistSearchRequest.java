@@ -13,6 +13,7 @@ public record ArtistSearchRequest(
         String region2DepthName,
         String region3DepthName,
         Integer page,
-        Integer size
+        Integer size,
+        Boolean followedOnly // 내가 팔로우한 아티스트만 (로그인 필요)
 ) {
 }

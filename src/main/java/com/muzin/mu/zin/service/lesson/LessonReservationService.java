@@ -39,6 +39,7 @@ public class LessonReservationService {
     private final UserRepository userRepository;
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
     private final ApplicationEventPublisher publisher; // 이벤트 리스너 사용 시 필요
+    private final com.muzin.mu.zin.service.chat.ChatService chatService;
 
     // 예약 생성
     @Transactional
@@ -72,7 +73,10 @@ public class LessonReservationService {
             throw ApiException.badRequest("본인 레슨은 예약할 수 없습니다.");
         }
 
-        // TODO(보류): 이메일 인증 완료 유저만 예약 가능하게 할지 - 소셜 가입 유저 인증 방식 결정 후 적용
+        // 이메일 인증 완료 유저만 예약 가능 (소셜 가입은 제공자가 확인해준 경우 가입 시 인증 완료)
+        if (!Boolean.TRUE.equals(user.getEmailVerified())) {
+            throw ApiException.forbidden("EMAIL_NOT_VERIFIED", "이메일 인증 후 예약할 수 있어요. 마이페이지 > 내 정보에서 인증 메일을 받아주세요.");
+        }
 
         // slot_id 가 UK 니까
 //        if (reservationRepository.existsByTimeSlot_TimeSlotIdAndStatusIn(timeSlot.getTimeSlotId())) {
@@ -250,6 +254,9 @@ public class LessonReservationService {
 
         reservation.confirm();
         slot.book(); // 슬롯을 예약상태로 바꿔줌
+
+        // 처음 수락이면 수강생-아티스트 채팅방 생성 (이미 있으면 그대로 -> 수락으로 다시 대화 가능해짐)
+        chatService.ensureRoom(reservation.getUser(), reservation.getLesson().getArtistProfile());
 
         // 알림 보낼 요청 온 유저
         Long userId = reservation.getUser().getUserId();

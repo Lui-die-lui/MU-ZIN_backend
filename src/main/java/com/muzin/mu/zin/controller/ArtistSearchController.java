@@ -7,6 +7,8 @@ import com.muzin.mu.zin.service.ArtistSearch.ArtistSearchService;
 import com.muzin.mu.zin.service.artistProfile.ArtistProfileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import com.muzin.mu.zin.security.model.PrincipalUser;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,13 +25,15 @@ public class ArtistSearchController {
     @GetMapping
     // /artists?keyword=플룻&instCategory=WOODWIND&instIds=1&instIds=2&styleTagIds=3
     public ResponseEntity<List<ArtistSearchResponse>> searchArtists(
-            @ModelAttribute ArtistSearchRequest req
+            @ModelAttribute ArtistSearchRequest req,
+            // 로그인했으면 팔로우 여부 표시 + followedOnly 조건 (비로그인 null)
+            @AuthenticationPrincipal PrincipalUser principalUser
 //            @RequestParam(required = false) String keyword,
 //            @RequestParam(required = false) InstrumentCategory instCategory,
 //            @RequestParam(required = false) List<Long> instIds,
 //            @RequestParam(required = false) List<Long> styleTagIds
             ) {
-        return ResponseEntity.ok(artistSearchService.searchArtists(req));
+        return ResponseEntity.ok(artistSearchService.searchArtists(req, principalUser == null ? null : principalUser.getUserId()));
     }
 
     @GetMapping("/{artistProfileId}")

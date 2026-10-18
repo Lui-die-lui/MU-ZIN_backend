@@ -5,6 +5,7 @@ import com.muzin.mu.zin.dto.artist.ArtistSearchRequest;
 import com.muzin.mu.zin.dto.artist.ArtistSearchRow;
 import com.muzin.mu.zin.dto.region.SearchServiceRegionRow;
 import com.muzin.mu.zin.entity.ArtistStatus;
+import com.muzin.mu.zin.entity.QArtistFavorite;
 import com.muzin.mu.zin.entity.QArtistInstrument;
 import com.muzin.mu.zin.entity.QArtistProfile;
 import com.muzin.mu.zin.entity.QUser;
@@ -27,7 +28,7 @@ public class ArtistProfileRepositoryImpl implements ArtistProfileRepositoryCusto
 
     // 존재 여부 검사 필터
     @Override
-    public List<ArtistSearchRow> searchArtistRows(ArtistSearchRequest req, Pageable pageable) {
+    public List<ArtistSearchRow> searchArtistRows(ArtistSearchRequest req, Pageable pageable, Long viewerUserId) {
 
         QArtistProfile artistProfile = QArtistProfile.artistProfile;
         QUser user = QUser.user;
@@ -56,7 +57,8 @@ public class ArtistProfileRepositoryImpl implements ArtistProfileRepositoryCusto
                         instCategoryCondition(req.instCategory(), artistInstrument, artistProfile),
                         instIdsCondition(req.instIds(), artistInstrument, artistProfile),
                         styleTagIdsCondition(req.styleTagIds(), artistStyleMap, artistProfile),
-                        regionCondition(req, artistProfile)
+                        regionCondition(req, artistProfile),
+                        followedOnlyCondition(req.followedOnly(), viewerUserId, artistProfile)
                 )
                 .orderBy(artistProfile.artistProfileId.desc())
                 .offset(pageable.getOffset())
@@ -108,6 +110,45 @@ public class ArtistProfileRepositoryImpl implements ArtistProfileRepositoryCusto
     }
 
     // 유저의 아티스트 요청 상황이 approved 인지(아티스트만 검색 가능해야함)
+    // 내 팔로잉 목록 카드: 검색과 같은 모양, 승인된 아티스트만
+    @Override
+    public List<ArtistSearchRow> findArtistRowsByIds(List<Long> artistProfileIds) {
+        if (artistProfileIds == null || artistProfileIds.isEmpty()) {
+            return List.of();
+        }
+        QArtistProfile artistProfile = QArtistProfile.artistProfile;
+        QUser user = QUser.user;
+        return queryFactory
+                .select(Projections.constructor(
+                        ArtistSearchRow.class,
+                        artistProfile.artistProfileId,
+                        user.username,
+                        artistProfile.majorName,
+                        user.profileImgUrl,
+                        artistProfile.region1DepthName,
+                        artistProfile.region2DepthName,
+                        artistProfile.region3DepthName,
+                        artistProfile.addressLabel
+                ))
+                .from(artistProfile)
+                .join(artistProfile.user, user)
+                .where(artistProfile.artistProfileId.in(artistProfileIds), approvedArtistCondition(user))
+                .fetch();
+    }
+
+    // 내가 팔로우한 아티스트만
+    private BooleanExpression followedOnlyCondition(Boolean followedOnly, Long viewerUserId, QArtistProfile artistProfile) {
+        if (!Boolean.TRUE.equals(followedOnly) || viewerUserId == null) {
+            return null;
+        }
+        QArtistFavorite favorite = QArtistFavorite.artistFavorite;
+        return JPAExpressions.selectOne()
+                .from(favorite)
+                .where(favorite.artistProfile.artistProfileId.eq(artistProfile.artistProfileId),
+                        favorite.user.userId.eq(viewerUserId))
+                .exists();
+    }
+
     private BooleanExpression approvedArtistCondition(QUser user) {
         return user.artistStatus.eq(ArtistStatus.APPROVED);
     }

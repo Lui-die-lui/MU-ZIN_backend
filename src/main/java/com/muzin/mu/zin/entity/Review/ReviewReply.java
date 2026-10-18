@@ -42,7 +42,7 @@ public class ReviewReply extends BaseTimeEntity {
     @JoinColumn(name = "artist_profile_id", nullable = false)
     private ArtistProfile artistProfile;
 
-    @Column(nullable = false, length = 255)
+    @Column(nullable = false, length = 500)
     private String content;
 
     @Column(name = "delete_dt")
@@ -50,6 +50,12 @@ public class ReviewReply extends BaseTimeEntity {
 
     public void update(String content) {
         this.content = content;
+    }
+
+    // 지웠던 답글을 다시 작성 (리뷰당 답글 1개 - 같은 행을 되살림)
+    public void restore(String content) {
+        this.content = content;
+        this.deleteDt = null;
     }
 
     public void softDelete() {
