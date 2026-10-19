@@ -13,6 +13,8 @@ public enum NotificationType {
     REVIEW_REPLIED, // 내 리뷰에 아티스트 답글 (-> 리뷰 작성자)
     INQUIRY_CREATED, // 새 레슨 문의 (-> 아티스트)
     INQUIRY_REPLIED, // 문의 답변 (-> 문의한 사람)
-    INQUIRY_TO_CHAT  // 아티스트가 문의를 채팅으로 넘김 (-> 문의한 사람)
+    INQUIRY_TO_CHAT, // 아티스트가 문의를 채팅으로 넘김 (-> 문의한 사람)
+    ARTIST_APPROVED, // 아티스트 신청 승인 (-> 신청자)
+    ARTIST_REJECTED  // 아티스트 신청 반려 (-> 신청자)
     // 추후 NEW_MESSAGE 등 추가 예정
 }

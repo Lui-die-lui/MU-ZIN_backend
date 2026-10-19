@@ -67,6 +67,31 @@ public class LessonRepositoryImpl implements LessonRepositoryCustom {
                 .fetch();
     }
 
+    @Override
+    public List<Lesson> findPublicLessonsByIds(java.util.Collection<Long> lessonIds) {
+        if (lessonIds == null || lessonIds.isEmpty()) {
+            return List.of();
+        }
+        QLesson lesson = QLesson.lesson;
+        QInstrument instrument = QInstrument.instrument;
+        QArtistProfile artistProfile = QArtistProfile.artistProfile;
+        QUser artistUser = QUser.user;
+
+        return queryFactory
+                .selectFrom(lesson)
+                .join(lesson.instrument, instrument).fetchJoin()
+                .join(lesson.artistProfile, artistProfile).fetchJoin()
+                .join(artistProfile.user, artistUser).fetchJoin()
+                .where(
+                        lesson.lessonId.in(lessonIds),
+                        lesson.deletedDt.isNull(),
+                        lesson.status.eq(LessonStatus.ACTIVE),
+                        approvedArtist(artistUser),
+                        closingPolicyVisible(lesson)
+                )
+                .fetch();
+    }
+
     // 공개 레슨 상세 조회
     // 레슨 상세 화면에 필요한 연관 데이터를 fetch join으로 함께 조회
     @Override
