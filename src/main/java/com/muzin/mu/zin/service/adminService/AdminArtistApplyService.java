@@ -5,8 +5,11 @@ import com.muzin.mu.zin.dto.admin.AdminArtistApplyListItem;
 import com.muzin.mu.zin.dto.instrument.InstrumentResponse;
 import com.muzin.mu.zin.entity.ArtistProfile;
 import com.muzin.mu.zin.entity.ArtistStatus;
+import com.muzin.mu.zin.entity.notification.NotificationType;
+import com.muzin.mu.zin.event.NotificationEvent;
 import com.muzin.mu.zin.repository.artist.ArtistProfileRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -22,6 +25,7 @@ import java.util.List;
 public class AdminArtistApplyService {
 
     private final ArtistProfileRepository artistProfileRepository;
+    private final ApplicationEventPublisher publisher;
 
     // 전환 요청 리스트
     @Transactional(readOnly = true)
@@ -79,6 +83,9 @@ public class AdminArtistApplyService {
         ap.getUser().setArtistStatus(ArtistStatus.APPROVED);
         ap.markReviewed();
         ap.clearRejectReason();
+
+        publisher.publishEvent(new NotificationEvent(ap.getUser().getUserId(), NotificationType.ARTIST_APPROVED,
+                "아티스트 신청 승인", "아티스트로 승인되었습니다. 이제 레슨을 만들 수 있어요.", null, null));
     }
 
     // 심사 반려
@@ -87,7 +94,10 @@ public class AdminArtistApplyService {
 
         ap.getUser().setArtistStatus(ArtistStatus.REJECTED);
         ap.markReviewed();
-        ap.setRejectReason(title, reason);
+        ap.setRejectReason(title.trim(), reason.trim());
+
+        publisher.publishEvent(new NotificationEvent(ap.getUser().getUserId(), NotificationType.ARTIST_REJECTED,
+                "아티스트 신청 반려", "아티스트 신청이 반려되었습니다. 사유를 확인하고 다시 신청할 수 있어요.", null, null));
     }
 
     private ArtistProfile getPendingApplication(Long artistProfileId) {
