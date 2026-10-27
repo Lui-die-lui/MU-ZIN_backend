@@ -15,6 +15,7 @@ import com.muzin.mu.zin.repository.UserRepository;
 import com.muzin.mu.zin.security.jwt.JwtUtils;
 import com.muzin.mu.zin.security.model.PrincipalUser;
 import com.muzin.mu.zin.security.ratelimit.LoginAttemptService;
+import com.muzin.mu.zin.security.ratelimit.LoginFailureRecorder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -39,6 +40,7 @@ public class AuthService {
     private final JwtUtils jwtUtils;
     private final UsernameGenerator usernameGenerator;
     private final LoginAttemptService loginAttemptService;
+    private final LoginFailureRecorder loginFailureRecorder;
 
     // 회원가입
     @Transactional
@@ -96,6 +98,7 @@ public class AuthService {
 
         // 이메일이 없든 비밀번호가 틀리든 같은 응답 + 같은 횟수 차감 (응답 차이로 가입 여부가 드러나지 않게)
         if (found.isEmpty() || !passwordEncoder.matches(request.password(), found.get().getPassword())) {
+            loginFailureRecorder.record(email, found.map(User::getUserId).orElse(null)); // 이상행동 감지용 기록
             int remaining = loginAttemptService.recordFailure(email); // 5번째 실패면 여기서 429
 
             // 소셜 가입 계정은 비밀번호가 랜덤값이라 일반 로그인 불가 -> 가입 방식 안내

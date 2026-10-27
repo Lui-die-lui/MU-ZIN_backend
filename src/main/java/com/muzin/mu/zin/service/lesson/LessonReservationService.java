@@ -13,6 +13,7 @@ import com.muzin.mu.zin.entity.lesson.TimeSlotStatus;
 import com.muzin.mu.zin.entity.notification.NotificationRefType;
 import com.muzin.mu.zin.entity.notification.NotificationType;
 import com.muzin.mu.zin.entity.reservation.CompletionSource;
+import com.muzin.mu.zin.entity.reservation.CanceledBy;
 import com.muzin.mu.zin.entity.reservation.LessonReservation;
 import com.muzin.mu.zin.entity.reservation.ReservationStatus;
 import com.muzin.mu.zin.event.NotificationEvent;
@@ -164,7 +165,7 @@ public class LessonReservationService {
 
         // 대기중(REQUESTED)은 언제든 취소 가능하게
         if (reservation.getStatus() == ReservationStatus.REQUESTED) {
-            reservation.cancel();
+            reservation.cancel(CanceledBy.USER);
             if (reservation.getTimeSlot().getStatus() == TimeSlotStatus.PENDING) {
                 reservation.getTimeSlot().open(); // PENDING -> OPEN
             }
@@ -189,7 +190,7 @@ public class LessonReservationService {
                 throw ApiException.conflict("CANCEL_DEADLINE_PASSED", "확정된 예약은 레슨 24시간 전까지만 취소할 수 있습니다. 아티스트에게 문의해주세요.");
             }
 
-            reservation.cancel();
+            reservation.cancel(CanceledBy.USER);
 
             // 유저 취소 시에는 다시 OPEN으로
             reservation.getTimeSlot().reopenFromBooked(); // BOOKED -> OPEN
@@ -327,7 +328,7 @@ public class LessonReservationService {
             throw new IllegalArgumentException("취소 사유는 200자 이하로 입력해주세요.");
         }
 
-        reservation.cancel();
+        reservation.cancel(CanceledBy.ARTIST);
 
         // 확정 취소 - 기본은 닫기, 옵션으로 재오픈
         if (req != null && req.reopenSlot()) {

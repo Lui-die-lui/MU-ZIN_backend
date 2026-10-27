@@ -5,6 +5,7 @@ import com.muzin.mu.zin.dto.admin.AdminUserListItem;
 import com.muzin.mu.zin.entity.User;
 import com.muzin.mu.zin.exception.ApiException;
 import com.muzin.mu.zin.repository.UserRepository;
+import com.muzin.mu.zin.repository.admin.ModerationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -25,6 +26,7 @@ import java.util.Set;
 public class AdminUserService {
 
     private final UserRepository userRepository;
+    private final ModerationRepository moderationRepository;
 
     // 회원 목록 (최근 가입순) - q: 이메일/이름 일부, suspendedOnly: 정지된 계정만
     @Transactional(readOnly = true)
@@ -63,6 +65,8 @@ public class AdminUserService {
             throw ApiException.badRequest("관리자 계정은 정지할 수 없습니다.");
         }
         user.suspend(TimeDefaults.nowKst(), reason.trim());
+        // 이 유저에게 열려 있던 이상행동 감지·신고는 "조치함"으로 닫음
+        moderationRepository.closeAllOpenFor(targetUserId, adminUserId, TimeDefaults.nowKst());
         log.info("계정 정지: target={} by={}", targetUserId, adminUserId);
     }
 
