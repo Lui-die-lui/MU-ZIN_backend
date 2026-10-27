@@ -117,6 +117,9 @@ public class SecurityConfig {
                 .requestMatchers("/auth/signup", "/auth/signin", "/auth/principal", "/error",
                         "/oauth2/**", "/login/oauth2/**", "/mail/verify").permitAll()
 
+                // 방문 기록 (관리자 대시보드 유입 분석, 익명)
+                .requestMatchers(HttpMethod.POST, "/visits").permitAll()
+
                 // 실시간 채팅 WebSocket 연결 (인증은 STOMP CONNECT 에서 JWT 로 따로 확인)
                 .requestMatchers("/ws", "/ws/**").permitAll();
 

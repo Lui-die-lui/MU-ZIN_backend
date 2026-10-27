@@ -59,12 +59,12 @@ class LessonReservationStateTest {
         for (ReservationStatus s : new ReservationStatus[]{
                 ReservationStatus.EXPIRED, ReservationStatus.REJECTED, ReservationStatus.CANCELED,
                 ReservationStatus.COMPLETION_PENDING, ReservationStatus.COMPLETED}) {
-            assertThatThrownBy(() -> reservation(s).cancel())
+            assertThatThrownBy(() -> reservation(s).cancel(CanceledBy.USER))
                     .as("status=%s", s)
                     .isInstanceOf(IllegalStateException.class);
         }
         LessonReservation requested = reservation(ReservationStatus.REQUESTED);
-        requested.cancel();
+        requested.cancel(CanceledBy.USER);
         assertThat(requested.getStatus()).isEqualTo(ReservationStatus.CANCELED);
     }
 

@@ -69,6 +69,10 @@ public class LessonReservation extends BaseTimeEntity {
     @Column(name = "canceled_dt")
     private LocalDateTime canceledDt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "canceled_by", length = 10)
+    private CanceledBy canceledBy;
+
     @Column(name = "completed_dt")
     private LocalDateTime completedDt;
 
@@ -105,13 +109,14 @@ public class LessonReservation extends BaseTimeEntity {
         this.status = ReservationStatus.REJECTED;
     }
 
-    public void cancel() {
+    public void cancel(CanceledBy by) {
         if (this.status != ReservationStatus.REQUESTED && this.status != ReservationStatus.CONFIRMED) {
             throw new IllegalStateException("취소할 수 없는 예약 상태입니다.");
         }
 
         this.status = ReservationStatus.CANCELED;
         this.canceledDt = TimeDefaults.nowKst();
+        this.canceledBy = by;
     }
 
     // 레슨 시작 시점에 status를 바꿔서 완료 흐름을 조금 더 명확하게 해줌
