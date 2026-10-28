@@ -7,11 +7,16 @@ import com.muzin.mu.zin.repository.NotificationRepository;
 import com.muzin.mu.zin.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
+import java.util.Map;
 
 // 해당 이벤트 리스너는 이벤트 발행 상태 변경 직후에 넣기(refType, refId 사용)
 @Slf4j
@@ -21,6 +26,7 @@ public class NotificationEventListener {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     // Event 를 publish 해도 트랜잭션이 커밋 성공했을 때만 실행
     // 트랜잭션이 롤백되면 리스너가 아예 실행 안됨
@@ -53,6 +59,22 @@ public class NotificationEventListener {
         // 해당 트랜잭션 안에서 즉시 insert(flush) 시켜서 id 즉시 생성
         Notification saved = notificationRepository.saveAndFlush(noti);
         log.info("[NOTI] saved id={}", saved.getNotificationId());
+
+        // 실시간: 이 알림 저장이 커밋된 뒤 받는 사람의 /user/queue/notification 으로 "새 알림" 신호
+        // (화면은 신호를 받으면 안 읽은 수·목록을 다시 불러옴. 커밋 전에 보내면 아직 안 보이는 알림을 불러올 수 있음)
+        // 연결이 없으면 그냥 버려짐 -> 화면의 60초 확인·재연결 때 맞춰짐
+        Long recipientId = recipient.getUserId();
+        Map<String, Object> signal = Map.of("notificationId", saved.getNotificationId(), "type", e.type().name());
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    messagingTemplate.convertAndSendToUser(String.valueOf(recipientId), "/queue/notification", signal);
+                } catch (RuntimeException ex) {
+                    log.warn("[NOTI] 실시간 신호 실패 (알림은 저장됨): {}", ex.toString());
+                }
+            }
+        });
 
     }
 }
