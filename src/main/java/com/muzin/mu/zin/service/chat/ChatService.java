@@ -144,7 +144,7 @@ public class ChatService {
         room.markRead(senderUserId, saved.getChatMessageId()); // 내가 보낸 건 읽은 것으로
 
         ChatMessageResponse resp = toMessage(saved);
-        publisher.publishEvent(new ChatMessageSentEvent(List.of(room.getStudent().getUserId(), room.getArtistProfile().getUser().getUserId()), resp));
+        publisher.publishEvent(new ChatMessageSentEvent(List.of(room.getStudent().getUserId(), room.getArtistProfile().getUser().getUserId()), resp, true));
         return resp;
     }
 
@@ -182,7 +182,7 @@ public class ChatService {
         chatMessageRepository.flush();
         ChatRoom room = m.getChatRoom();
         ChatMessageResponse resp = toMessage(m);
-        publisher.publishEvent(new ChatMessageSentEvent(List.of(room.getStudent().getUserId(), room.getArtistProfile().getUser().getUserId()), resp));
+        publisher.publishEvent(new ChatMessageSentEvent(List.of(room.getStudent().getUserId(), room.getArtistProfile().getUser().getUserId()), resp, false));
         return resp;
     }
 
