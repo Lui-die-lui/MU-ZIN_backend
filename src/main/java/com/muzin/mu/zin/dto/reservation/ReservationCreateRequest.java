@@ -8,6 +8,9 @@ public record ReservationCreateRequest(
         Long timeSlotId,
 
         @Size(max = 1000, message = "요청 메시지는 1000자 이하로 입력해주세요.")
-        String requestMsg
+        String requestMsg,
+
+        // "레슨은 아티스트와 직접 하는 약속, 결제·환불은 두 분이 직접" 안내 확인 (true 면 확인 시각 저장)
+        Boolean noticeAcknowledged
 ) {
 }

@@ -116,6 +116,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter { // 요청마
 
         User user = optionalUser.get();
 
+        if (user.isWithdrawn()) {
+            request.setAttribute(AUTH_ERROR_ATTR, TOKEN_INVALID);
+            return;
+        }
+
         // 정지된 계정은 유효한 토큰이 있어도 인증하지 않음 (fail-closed)
         if (user.isSuspended()) {
             request.setAttribute(AUTH_ERROR_ATTR, ACCOUNT_SUSPENDED);

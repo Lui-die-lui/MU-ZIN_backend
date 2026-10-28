@@ -36,7 +36,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("""
         select u
         from User u
-        where (lower(u.email) like concat('%', :keyword, '%') or lower(u.username) like concat('%', :keyword, '%'))
+        where u.withdrawnDt is null
+          and (lower(u.email) like concat('%', :keyword, '%') or lower(u.username) like concat('%', :keyword, '%'))
           and (:suspendedOnly = false or u.suspendedDt is not null)
         order by u.userId desc
     """)

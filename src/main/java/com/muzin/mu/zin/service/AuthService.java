@@ -1,6 +1,8 @@
 package com.muzin.mu.zin.service;
 
 import com.muzin.mu.zin.dto.ApiRespDto;
+import com.muzin.mu.zin.dto.auth.ConsentRequest;
+import com.muzin.mu.zin.dto.auth.OAuth2SignupRequest;
 import com.muzin.mu.zin.dto.auth.PrincipalDto;
 import com.muzin.mu.zin.dto.auth.SigninRequest;
 import com.muzin.mu.zin.dto.auth.SignupRequest;
@@ -17,6 +19,7 @@ import com.muzin.mu.zin.security.model.PrincipalUser;
 import com.muzin.mu.zin.security.ratelimit.LoginAttemptService;
 import com.muzin.mu.zin.security.ratelimit.LoginFailureRecorder;
 import lombok.RequiredArgsConstructor;
+import io.jsonwebtoken.JwtException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -25,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -41,11 +45,15 @@ public class AuthService {
     private final UsernameGenerator usernameGenerator;
     private final LoginAttemptService loginAttemptService;
     private final LoginFailureRecorder loginFailureRecorder;
+    private final ConsentService consentService;
+    private final WithdrawalService withdrawalService;
 
     // 회원가입
     @Transactional
     public void signup(SignupRequest request) {
         String email = request.email().trim();
+        boolean consented = consentService.checkSignup(request.consent()); // 하나라도 "동의 안 함"이면 여기서 거부
+        withdrawalService.checkRejoinAllowed(email);
 
         if (!request.password().equals(request.passwordConfirm())) {
             throw new IllegalArgumentException("비밀번호 확인이 일치하지 않습니다.");
@@ -84,7 +92,70 @@ public class AuthService {
         newUser.addUserRole(userRole);
 
         // 저장 (User에 cascade = ALL 걸려있어서 User만 save 해도 UserRole 같이 저장됨)
-        userRepository.save(newUser);
+        userRepository.saveAndFlush(newUser);
+        if (consented) consentService.agree(newUser.getUserId(), request.consent());
+    }
+
+    /*
+     * 소셜 첫 가입 완료 - 소셜 로그인 직후에는 회원을 만들지 않고(OAuth2SuccessHandler) 동의 화면에서 이 요청이 오면 만듦
+     * @return 로그인 토큰
+     */
+    @Transactional
+    public String completeOAuth2Signup(OAuth2SignupRequest req) {
+        JwtUtils.OAuth2Signup s;
+        try {
+            s = jwtUtils.parseOAuth2SignupToken(req.signupToken());
+        } catch (JwtException | IllegalArgumentException e) {
+            throw ApiException.unauthorized("SIGNUP_TOKEN_INVALID", "가입 시간이 지났어요. 소셜 로그인을 다시 시도해 주세요.");
+        }
+        consentService.requireAll(req.consent()); // 동의가 빠졌으면 회원을 만들기 전에 거부
+        return createOAuth2User(s, req);
+    }
+
+    private String createOAuth2User(JwtUtils.OAuth2Signup s, OAuth2SignupRequest req) {
+        // 동의 화면에서 두 번 누른 경우 등 - 이미 연결돼 있으면 그 계정으로 로그인
+        Optional<OAuth2UserEntity> linked = oAuth2UserRepository.findByProviderAndProviderUserId(s.provider(), s.providerUserId());
+        if (linked.isPresent()) {
+            User user = linked.get().getUser();
+            if (user.isSuspended()) {
+                throw new ApiException(HttpStatus.FORBIDDEN, "ACCOUNT_SUSPENDED", "이용이 정지된 계정입니다. 관리자에게 문의해주세요.");
+            }
+            return jwtUtils.generateAccessToken(user.getUserId());
+        }
+        String email = s.email().trim();
+        withdrawalService.checkRejoinAllowed(email);
+        Optional<User> existing = userRepository.findByEmailIgnoreCase(email);
+        if (existing.isPresent()) {
+            List<OAuth2UserEntity> links = oAuth2UserRepository.findAllByUser_UserId(existing.get().getUserId());
+            String name = links.isEmpty() ? "이메일" : providerName(links.get(0).getProvider());
+            throw ApiException.conflict("EMAIL_ALREADY_REGISTERED", "이미 " + name + "(으)로 가입된 이메일입니다.");
+        }
+
+        // 비밀번호 로그인은 불가능한 랜덤값
+        User newUser = User.builder()
+                .email(email)
+                .username(usernameGenerator.generate(email)) // 공개 화면에 이메일이 노출되지 않게
+                .password(passwordEncoder.encode("oauth2-" + UUID.randomUUID()))
+                .emailVerified(s.emailVerified())
+                .build();
+        Role userRoleEntity = roleRepository.findByRoleName("ROLE_USER")
+                .orElseThrow(() -> new IllegalStateException("해당 권한이 DB에 존재하지 않습니다."));
+        newUser.addUserRole(UserRole.builder().user(newUser).role(userRoleEntity).build());
+        userRepository.saveAndFlush(newUser);
+
+        oAuth2UserRepository.save(OAuth2UserEntity.builder()
+                .user(newUser)
+                .provider(s.provider())
+                .providerUserId(s.providerUserId())
+                .build());
+        consentService.agree(newUser.getUserId(), req.consent());
+        return jwtUtils.generateAccessToken(newUser.getUserId());
+    }
+
+    // 기존 회원 다시 동의 (약관이 바뀌었거나 이 기능 이전에 가입)
+    @Transactional
+    public void agree(PrincipalUser principal, ConsentRequest req) {
+        consentService.agree(principal.getUserId(), req);
     }
 
     @Transactional(readOnly = true)
@@ -151,7 +222,8 @@ public class AuthService {
                 user.getArtistStatus(),
                 principal.getRoles(),
                 canChangePassword,
-                oauth2Provider
+                oauth2Provider,
+                consentService.isRequired(user.getUserId())
         );
 
         return new ApiRespDto<>("success","", dto);

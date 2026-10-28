@@ -47,6 +47,10 @@ public class LessonReservationService {
     public ApiRespDto<ReservationResponse> createReservation(ReservationCreateRequest req, PrincipalUser principalUser) {
         Long userId = principalUser.getUserId();
 
+        if (!Boolean.TRUE.equals(req.noticeAcknowledged())) {
+            throw ApiException.badRequest("예약 전 결제·환불 안내를 확인해 주세요.");
+        }
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("유저가 존재하지 않습니다."));
 
@@ -106,6 +110,7 @@ public class LessonReservationService {
                 .priceAtBooking(price)
                 .requestedMsg(req.requestMsg())
                 .requestedDt(LocalDateTime.now(KST))
+                .noticeAckDt(LocalDateTime.now(KST))
                 .build();
 
         LessonReservation saved = reservationRepository.save(reservation);
@@ -531,7 +536,7 @@ public class LessonReservationService {
                 lesson.getTitle(),
                 new TimeSlotResponse(ts.getTimeSlotId(), ts.getStartDt(), endDt, ts.getStatus()),
                 r.getUser().getUserId(),
-                r.getUser().getUsername(),
+                r.getUser().getDisplayName(),
                 hasMessage
         );
     }
@@ -568,10 +573,10 @@ public class LessonReservationService {
                 new TimeSlotResponse(ts.getTimeSlotId(), ts.getStartDt(), endDt, ts.getStatus()),
 
                 artistUser.getUserId(),
-                artistUser.getUsername(),
+                artistUser.getDisplayName(),
 
                 requesterUser.getUserId(),
-                requesterUser.getUsername(),
+                requesterUser.getDisplayName(),
                 r.getRequestedMsg(),
 
                 canMarkCompleted,

@@ -15,5 +15,14 @@ public record SignupRequest(
         String password,
 
         @NotBlank(message = "비밀번호 확인을 입력해주세요.")
-        String passwordConfirm
-) {}
+        String passwordConfirm,
+
+        // 가입 동의 (이용약관 · 개인정보 수집·이용 · 만 14세 이상). 검사는 ConsentService.checkSignup
+        Boolean agreeTerms,
+        Boolean agreePrivacy,
+        Boolean ageOver14
+) {
+    public ConsentRequest consent() {
+        return new ConsentRequest(agreeTerms, agreePrivacy, ageOver14);
+    }
+}

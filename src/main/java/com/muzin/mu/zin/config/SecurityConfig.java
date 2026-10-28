@@ -114,7 +114,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/regions/**", "/instruments/**", "/artists/**",
                         "/reviews/keywords", "/reviews/lessons/**", "/reviews/artists/**").permitAll()
 
-                .requestMatchers("/auth/signup", "/auth/signin", "/auth/principal", "/error",
+                .requestMatchers("/auth/signup", "/auth/oauth2/signup", "/auth/signin", "/auth/principal", "/error",
                         "/oauth2/**", "/login/oauth2/**", "/mail/verify").permitAll()
 
                 // 방문 기록 (관리자 대시보드 유입 분석, 익명)

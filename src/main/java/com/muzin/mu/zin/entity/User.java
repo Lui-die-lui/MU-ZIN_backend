@@ -72,13 +72,29 @@ public class User extends BaseTimeEntity {
     @Column(name = "suspended_reason")
     private String suspendedReason;
 
+    @Column(name = "withdrawn_dt")
+    private LocalDateTime withdrawnDt;
+
+    @Builder.Default
+    @Column(name = "ever_suspended", nullable = false)
+    private boolean everSuspended = false;
+
     public boolean isSuspended() {
         return suspendedDt != null;
+    }
+
+    public boolean isWithdrawn() {
+        return withdrawnDt != null;
+    }
+
+    public String getDisplayName() {
+        return isWithdrawn() ? "탈퇴한 회원" : username;
     }
 
     public void suspend(LocalDateTime at, String reason) {
         this.suspendedDt = at;
         this.suspendedReason = reason;
+        this.everSuspended = true;
     }
 
     public void unsuspend() {

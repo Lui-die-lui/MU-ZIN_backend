@@ -55,7 +55,7 @@ public class InquiryService {
         LessonInquiry saved = inquiryRepository.save(LessonInquiry.builder().user(user).artistProfile(artist).content(content).build());
 
         publisher.publishEvent(new NotificationEvent(artist.getUser().getUserId(), NotificationType.INQUIRY_CREATED,
-                "새 레슨 문의", limit(user.getUsername() + "님이 레슨을 문의했어요."), NotificationRefType.INQUIRY, saved.getInquiryId()));
+                "새 레슨 문의", limit(user.getDisplayName() + "님이 레슨을 문의했어요."), NotificationRefType.INQUIRY, saved.getInquiryId()));
         return toResponse(saved, userId);
     }
 
@@ -80,7 +80,7 @@ public class InquiryService {
         }
         inquiry.reply(normalize(rawContent, "답변 내용을 입력해주세요."));
         publisher.publishEvent(new NotificationEvent(inquiry.getUser().getUserId(), NotificationType.INQUIRY_REPLIED,
-                "문의 답변", limit(inquiry.getArtistProfile().getUser().getUsername() + "님이 문의에 답변했어요."), NotificationRefType.INQUIRY, inquiry.getInquiryId()));
+                "문의 답변", limit(inquiry.getArtistProfile().getUser().getDisplayName() + "님이 문의에 답변했어요."), NotificationRefType.INQUIRY, inquiry.getInquiryId()));
         return toResponse(inquiry, artistUserId);
     }
 
@@ -98,7 +98,7 @@ public class InquiryService {
         }
         inquiry.toChat(room.getChatRoomId());
         publisher.publishEvent(new NotificationEvent(inquiry.getUser().getUserId(), NotificationType.INQUIRY_TO_CHAT,
-                "문의가 채팅으로 이어졌어요", limit(inquiry.getArtistProfile().getUser().getUsername() + "님과 채팅으로 이야기할 수 있어요."),
+                "문의가 채팅으로 이어졌어요", limit(inquiry.getArtistProfile().getUser().getDisplayName() + "님과 채팅으로 이야기할 수 있어요."),
                 NotificationRefType.CHAT_ROOM, room.getChatRoomId()));
         return toResponse(inquiry, artistUserId);
     }
@@ -128,10 +128,10 @@ public class InquiryService {
                 i.getInquiryId(),
                 Objects.equals(ap.getUser().getUserId(), me) ? "ARTIST" : "SENDER",
                 ap.getArtistProfileId(),
-                ap.getUser().getUsername(),
+                ap.getUser().getDisplayName(),
                 ap.getUser().getProfileImgUrl(),
                 i.getUser().getUserId(),
-                i.getUser().getUsername(),
+                i.getUser().getDisplayName(),
                 i.getUser().getProfileImgUrl(),
                 i.getContent(),
                 i.getReplyContent(),

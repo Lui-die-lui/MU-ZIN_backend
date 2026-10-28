@@ -249,7 +249,7 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
         ArtistProfileResponse resp = new ArtistProfileResponse(
                 profile.getArtistProfileId(),
                 user.getUserId(),
-                user.getUsername(),
+                user.getDisplayName(),
                 user.getProfileImgUrl(),
                 profile.getBio(),
                 profile.getCareer(),
@@ -368,7 +368,7 @@ public class ArtistProfileServiceImpl implements ArtistProfileService{
         return new ArtistProfileResponse(
                 profile.getArtistProfileId(),
                 profile.getUser().getUserId(),
-                profile.getUser().getUsername(),
+                profile.getUser().getDisplayName(),
                 profile.getUser().getProfileImgUrl(),
                 profile.getBio(),
                 profile.getCareer(),

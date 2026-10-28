@@ -291,7 +291,7 @@ public class ChatService {
                 r.getChatRoomId(),
                 meStudent ? "STUDENT" : "ARTIST",
                 counterpart.getUserId(),
-                counterpart.getUsername(),
+                counterpart.getDisplayName(),
                 counterpart.getProfileImgUrl(),
                 meStudent ? r.getArtistProfile().getArtistProfileId() : null,
                 lastMessage,

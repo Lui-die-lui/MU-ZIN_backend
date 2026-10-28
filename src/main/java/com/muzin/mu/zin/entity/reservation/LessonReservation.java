@@ -86,6 +86,10 @@ public class LessonReservation extends BaseTimeEntity {
     @Column(name = "expired_dt")
     private LocalDateTime expiredDt;
 
+    // 예약 요청 때 "직접 하는 약속 · 결제는 두 분이" 안내를 확인한 시각 (V13 이전 예약은 null)
+    @Column(name = "notice_ack_dt")
+    private LocalDateTime noticeAckDt;
+
     // 낙관적 락: 아티스트 확정과 유저 취소가 동시에 들어오는 등 같은 예약을 동시에 바꾸면 한쪽은 409
     @Version
     @Column(name = "version", nullable = false)
