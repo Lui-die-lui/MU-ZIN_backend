@@ -9,14 +9,12 @@ import com.muzin.mu.zin.repository.RoleRepository;
 import com.muzin.mu.zin.repository.UserRepository;
 import com.muzin.mu.zin.repository.UserRoleRepository;
 import com.muzin.mu.zin.security.jwt.JwtUtils;
-import com.muzin.mu.zin.service.UsernameGenerator;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
@@ -27,7 +25,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 /*
  * 소셜 로그인 성공 후 처리
@@ -48,10 +45,8 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
     private final JwtUtils jwtUtils;
     private final UserRepository userRepository;
     private final OAuth2UserRepository oAuth2UserRepository;
-    private final PasswordEncoder passwordEncoder;
     private final UserRoleRepository userRoleRepository;
     private final RoleRepository roleRepository;
-    private final UsernameGenerator usernameGenerator;
 
     @Value("${oauth2.redirect.success-url}")
     private String successRedirectUrl;
@@ -111,26 +106,17 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
             return;
         }
 
-        // Signup - 새로운 User 생성 + OAuth2 유저 생성 (비밀번호 로그인은 불가능한 랜덤값)
-        User newUser = User.builder()
-                .email(email.trim())
-                .username(usernameGenerator.generate(email.trim())) // 공개 화면에 이메일이 노출되지 않게
-                .password(passwordEncoder.encode("oauth2-" + UUID.randomUUID()))
-                .emailVerified(providerEmailVerified)
-                .build();
-
-        userRepository.save(newUser);
-        ensureUserRole(newUser);
-
-        oAuth2UserRepository.save(
-                OAuth2UserEntity.builder()
-                        .user(newUser)
-                        .provider(provider)
-                        .providerUserId(providerUserId)
-                        .build()
-        );
-
-        redirectWithToken(request, response, newUser);
+        // Signup - 동의를 받기 전에는 회원을 만들지 않음. 제공자 정보만 담은 10분짜리 가입 토큰을 주고
+        // 화면의 동의 단계에서 POST /auth/oauth2/signup 으로 가입을 마침 (AuthService.completeOAuth2Signup)
+        String signupToken = jwtUtils.generateOAuth2SignupToken(
+                new JwtUtils.OAuth2Signup(provider, providerUserId, email.trim(), providerEmailVerified));
+        String targetUrl = UriComponentsBuilder.fromUriString(successRedirectUrl)
+                .queryParam("signupToken", signupToken)
+                .queryParam("provider", provider)
+                .build()
+                .encode(StandardCharsets.UTF_8)
+                .toUriString();
+        getRedirectStrategy().sendRedirect(request, response, targetUrl);
     }
 
     // 가입 시 userRole (USER)를 보장

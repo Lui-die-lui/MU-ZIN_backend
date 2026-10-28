@@ -2,6 +2,7 @@ package com.muzin.mu.zin.security.jwt;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -50,6 +51,33 @@ public class JwtUtils {
                 .expiration(new Date(System.currentTimeMillis() + VERIFY_TOKEN_TTL.toMillis()))
                 .signWith(KEY)
                 .compact();
+    }
+
+    // 소셜 첫 가입: 동의를 받기 전까지 회원을 만들지 않고 제공자 정보만 담아 두는 임시 토큰 (10분)
+    //  - subject 가 숫자가 아니라서 로그인 토큰으로는 쓸 수 없음 (JwtAuthenticationFilter 가 거부)
+    public static final Duration OAUTH2_SIGNUP_TTL = Duration.ofMinutes(10);
+    private static final String OAUTH2_SIGNUP_SUBJECT = "OAuth2Signup";
+
+    public record OAuth2Signup(String provider, String providerUserId, String email, boolean emailVerified) { }
+
+    public String generateOAuth2SignupToken(OAuth2Signup s) {
+        return Jwts.builder()
+                .subject(OAUTH2_SIGNUP_SUBJECT)
+                .claim("provider", s.provider())
+                .claim("providerUserId", s.providerUserId())
+                .claim("email", s.email())
+                .claim("emailVerified", s.emailVerified())
+                .expiration(new Date(System.currentTimeMillis() + OAUTH2_SIGNUP_TTL.toMillis()))
+                .signWith(KEY)
+                .compact();
+    }
+
+    // 만료·위조·다른 종류 토큰이면 JwtException
+    public OAuth2Signup parseOAuth2SignupToken(String token) {
+        Claims c = getClaims(token);
+        if (!OAUTH2_SIGNUP_SUBJECT.equals(c.getSubject())) throw new MalformedJwtException("가입 토큰이 아님");
+        return new OAuth2Signup(c.get("provider", String.class), c.get("providerUserId", String.class),
+                c.get("email", String.class), Boolean.TRUE.equals(c.get("emailVerified", Boolean.class)));
     }
 
     public boolean isBearer(String token) {

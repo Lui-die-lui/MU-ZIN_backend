@@ -40,7 +40,7 @@ public class AdminUserService {
         return page.map(u -> new AdminUserListItem(
                 u.getUserId(),
                 u.getEmail(),
-                u.getUsername(),
+                u.getDisplayName(),
                 u.getProfileImgUrl(),
                 u.getArtistStatus(),
                 Boolean.TRUE.equals(u.getEmailVerified()),

@@ -369,7 +369,7 @@ public class LessonService {
 
         ArtistSummaryResponse artist = new ArtistSummaryResponse(
                 profile.getArtistProfileId(),
-                user.getUsername(),
+                user.getDisplayName(),
                 user.getProfileImgUrl()
         );
 

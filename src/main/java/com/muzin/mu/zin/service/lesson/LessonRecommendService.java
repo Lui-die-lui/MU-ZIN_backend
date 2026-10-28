@@ -116,7 +116,7 @@ public class LessonRecommendService {
                 lesson.getInstrument().getInstId(),
                 lesson.getInstrument().getInstName(),
                 ap.getArtistProfileId(),
-                ap.getUser().getUsername(),
+                ap.getUser().getDisplayName(),
                 ap.getUser().getProfileImgUrl(),
                 new SearchMainRegionSummary(ap.getRegion1DepthName(), ap.getRegion2DepthName(), ap.getRegion3DepthName(), ap.getAddressLabel()),
                 main ? "MAIN" : "SERVICE",

@@ -29,7 +29,7 @@ public class ModerationRepository {
 
     // 감지 대상에서 빼는 계정: 관리자, 샘플 계정, 이미 정지된 계정
     private static final String NORMAL_USER = """
-            u.is_sample = false AND u.suspended_dt IS NULL
+            u.is_sample = false AND u.suspended_dt IS NULL AND u.withdrawn_dt IS NULL
             AND NOT EXISTS (SELECT 1 FROM user_role ur JOIN role r ON r.role_id = ur.role_id
                             WHERE ur.user_id = u.user_id AND r.role_name = 'ROLE_ADMIN')
             """;
@@ -167,7 +167,12 @@ public class ModerationRepository {
         String where = open ? "f.status = 'OPEN'" : "f.status <> 'OPEN'";
         String order = open ? "f.last_detected_dt DESC" : "f.resolved_dt DESC NULLS LAST";
         List<AbuseFlagItem> rows = jdbc.query("""
-                SELECT f.*, u.email, u.username, u.profile_img_url, u.suspended_dt, a.username AS resolved_by_name
+                SELECT f.*,
+                       CASE WHEN u.withdrawn_dt IS NOT NULL THEN '' ELSE u.email END AS email,
+                       CASE WHEN u.withdrawn_dt IS NOT NULL THEN '탈퇴한 회원' ELSE u.username END AS username,
+                       CASE WHEN u.withdrawn_dt IS NOT NULL THEN NULL ELSE u.profile_img_url END AS profile_img_url,
+                       u.suspended_dt,
+                       CASE WHEN a.withdrawn_dt IS NOT NULL THEN '탈퇴한 회원' ELSE a.username END AS resolved_by_name
                 FROM abuse_flag f
                 JOIN users u ON u.user_id = f.user_id
                 LEFT JOIN users a ON a.user_id = f.resolved_by
@@ -237,9 +242,13 @@ public class ModerationRepository {
         String order = open ? "p.create_dt DESC" : "p.resolved_dt DESC NULLS LAST";
         List<AdminReportItem> rows = jdbc.query("""
                 SELECT p.*,
-                       r.username AS reporter_name, r.email AS reporter_email,
-                       t.username AS target_name, t.email AS target_email, t.profile_img_url AS target_img,
-                       t.suspended_dt AS target_suspended_dt, a.username AS resolved_by_name,
+                       CASE WHEN r.withdrawn_dt IS NOT NULL THEN '탈퇴한 회원' ELSE r.username END AS reporter_name,
+                       CASE WHEN r.withdrawn_dt IS NOT NULL THEN '' ELSE r.email END AS reporter_email,
+                       CASE WHEN t.withdrawn_dt IS NOT NULL THEN '탈퇴한 회원' ELSE t.username END AS target_name,
+                       CASE WHEN t.withdrawn_dt IS NOT NULL THEN '' ELSE t.email END AS target_email,
+                       CASE WHEN t.withdrawn_dt IS NOT NULL THEN NULL ELSE t.profile_img_url END AS target_img,
+                       t.suspended_dt AS target_suspended_dt,
+                       CASE WHEN a.withdrawn_dt IS NOT NULL THEN '탈퇴한 회원' ELSE a.username END AS resolved_by_name,
                        (SELECT COUNT(*) FROM user_report o
                         WHERE o.target_user_id = p.target_user_id AND o.status = 'OPEN') AS target_open_reports
                 FROM user_report p

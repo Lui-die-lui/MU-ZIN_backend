@@ -160,7 +160,7 @@ public class ReviewService {
                         r.getLesson().getLessonId(),
                         r.getLesson().getTitle(),
                         r.getLesson().getArtistProfile().getArtistProfileId(),
-                        r.getLesson().getArtistProfile().getUser().getUsername(),
+                        r.getLesson().getArtistProfile().getUser().getDisplayName(),
                         r.getTimeSlot().getStartDt(),
                         r.getTimeSlot().getEndDt(),
                         r.getCompletedDt(),
@@ -217,7 +217,7 @@ public class ReviewService {
                 review.getReviewUser().getUserId(),
                 NotificationType.REVIEW_REPLIED,
                 "리뷰 답글",
-                limit(artistProfile.getUser().getUsername() + "님이 \"" + review.getLesson().getTitle() + "\" 리뷰에 답글을 남겼어요."),
+                limit(artistProfile.getUser().getDisplayName() + "님이 \"" + review.getLesson().getTitle() + "\" 리뷰에 답글을 남겼어요."),
                 NotificationRefType.REVIEW,
                 review.getReviewId()
         ));
@@ -353,9 +353,9 @@ public class ReviewService {
                     review.getLesson().getLessonId(),
                     review.getLesson().getTitle(),
                     review.getArtistProfile().getArtistProfileId(),
-                    review.getArtistProfile().getUser().getUsername(),
+                    review.getArtistProfile().getUser().getDisplayName(),
                     review.getReviewUser().getUserId(),
-                    review.getReviewUser().getUsername(),
+                    review.getReviewUser().getDisplayName(),
                     review.getReviewUser().getProfileImgUrl(),
                     review.getRating(),
                     review.getContent(),
@@ -404,7 +404,7 @@ public class ReviewService {
         return new ReviewReplyResponse(
                 reply.getReviewReplyId(),
                 reply.getArtistProfile().getArtistProfileId(),
-                reply.getArtistProfile().getUser().getUsername(),
+                reply.getArtistProfile().getUser().getDisplayName(),
                 reply.getContent(),
                 reply.getCreateDt(),
                 reply.getUpdateDt()

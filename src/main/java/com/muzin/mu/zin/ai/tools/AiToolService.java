@@ -197,7 +197,7 @@ public class AiToolService {
         ArtistProfile ap = found.get();
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("artist_profile_id", ap.getArtistProfileId());
-        out.put("name", ap.getUser().getUsername());
+        out.put("name", ap.getUser().getDisplayName());
         out.put("major", ap.getMajorName());
         out.put("instruments", ap.getArtistInstruments().stream().map(ai -> ai.getInstrument().getInstName()).distinct().toList());
         out.put("main_region", regionLabel(ap.getRegion1DepthName(), ap.getRegion2DepthName()));
@@ -293,7 +293,7 @@ public class AiToolService {
                 }
                 ArtistProfile ap = l.getArtistProfile();
                 List<LessonTimeSlot> slots = futureOpenSlots(l.getLessonId(), SLOT_DAYS_DEFAULT);
-                out.add(new Card("LESSON", r.id(), r.reason(), true, l.getTitle(), ap.getArtistProfileId(), ap.getUser().getUsername(),
+                out.add(new Card("LESSON", r.id(), r.reason(), true, l.getTitle(), ap.getArtistProfileId(), ap.getUser().getDisplayName(),
                         ap.getUser().getProfileImgUrl(), ap.getMajorName(), List.of(l.getInstrument().getInstName()),
                         regionLabel(ap.getRegion1DepthName(), ap.getRegion2DepthName()),
                         regions.getOrDefault(ap.getArtistProfileId(), List.of()), l.getPrice(), l.getDurationMin(), l.getMode(),
@@ -305,8 +305,8 @@ public class AiToolService {
                     out.add(unavailable(r, "/artists/" + r.id()));
                     continue;
                 }
-                out.add(new Card("ARTIST", r.id(), r.reason(), true, ap.getUser().getUsername(), ap.getArtistProfileId(),
-                        ap.getUser().getUsername(), ap.getUser().getProfileImgUrl(), ap.getMajorName(),
+                out.add(new Card("ARTIST", r.id(), r.reason(), true, ap.getUser().getDisplayName(), ap.getArtistProfileId(),
+                        ap.getUser().getDisplayName(), ap.getUser().getProfileImgUrl(), ap.getMajorName(),
                         artistInsts.getOrDefault(ap.getArtistProfileId(), List.of()),
                         regionLabel(ap.getRegion1DepthName(), ap.getRegion2DepthName()),
                         regions.getOrDefault(ap.getArtistProfileId(), List.of()), null, null, null, null, null,
@@ -364,7 +364,7 @@ public class AiToolService {
         m.put("lesson_id", l.getLessonId());
         m.put("title", AiText.clean(l.getTitle(), 80));
         m.put("instrument", l.getInstrument().getInstName());
-        m.put("artist", Map.of("artist_profile_id", ap.getArtistProfileId(), "name", ap.getUser().getUsername()));
+        m.put("artist", Map.of("artist_profile_id", ap.getArtistProfileId(), "name", ap.getUser().getDisplayName()));
         m.put("price_krw", l.getPrice());
         m.put("duration_min", l.getDurationMin());
         m.put("mode", l.getMode());
