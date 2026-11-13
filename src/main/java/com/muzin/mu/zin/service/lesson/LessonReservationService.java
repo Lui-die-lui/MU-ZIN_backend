@@ -403,7 +403,8 @@ public class LessonReservationService {
                     "레슨 완료",
                     "레슨이 자동으로 완료 처리되었습니다.",
                     NotificationRefType.RESERVATION,
-                    reservation.getReservationId()
+                    reservation.getReservationId(),
+                    false // 수강생이 할 일이 없는 결과 알림이라 푸시는 보내지 않음
             ));
         }
     }
