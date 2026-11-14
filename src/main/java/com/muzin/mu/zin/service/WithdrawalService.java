@@ -115,6 +115,7 @@ public class WithdrawalService {
         jdbc.update("delete from ai_conversation where user_id = :userId", id);
         jdbc.update("delete from ai_weekly_usage where user_id = :userId", id);
         jdbc.update("delete from login_failure_log where user_id = :userId", id);
+        jdbc.update("delete from support_inquiry where user_id = :userId", id); // 운영자 문의는 상대와 함께 쓰는 기록이 아니라 바로 삭제
         jdbc.update("delete from oauth2_user where user_id = :userId", id);
         jdbc.update("delete from user_role where user_id = :userId", id);
         jdbc.update("delete from artist_instruments where artist_profile_id in (select artist_profile_id from artist_profile where user_id = :userId)", id);

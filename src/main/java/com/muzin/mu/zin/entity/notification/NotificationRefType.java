@@ -4,6 +4,7 @@ public enum NotificationRefType {
     RESERVATION,
     CHAT_ROOM,
     REVIEW,
-    INQUIRY
+    INQUIRY,
+    SUPPORT
     // 나중에 LESSON, REVIEW, ARTIST_PROFILE 등 추가
 }

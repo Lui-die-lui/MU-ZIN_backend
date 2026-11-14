@@ -15,6 +15,8 @@ public enum NotificationType {
     INQUIRY_REPLIED, // 문의 답변 (-> 문의한 사람)
     INQUIRY_TO_CHAT, // 아티스트가 문의를 채팅으로 넘김 (-> 문의한 사람)
     ARTIST_APPROVED, // 아티스트 신청 승인 (-> 신청자)
-    ARTIST_REJECTED  // 아티스트 신청 반려 (-> 신청자)
+    ARTIST_REJECTED, // 아티스트 신청 반려 (-> 신청자)
+    SUPPORT_CREATED, // 새 운영자 문의 (-> 관리자)
+    SUPPORT_REPLIED  // 운영자 문의 답변 (-> 문의한 사람)
     // 추후 NEW_MESSAGE 등 추가 예정
 }
