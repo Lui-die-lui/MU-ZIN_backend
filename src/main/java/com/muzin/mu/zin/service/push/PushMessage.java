@@ -11,8 +11,8 @@ public record PushMessage(String title, String body, String url, String tag) {
 
     // 서비스 워커의 ALLOWED 와 같은 규칙
     private static final Pattern ALLOWED_URL = Pattern.compile(
-            "^/mypage/(chats(/\\d+)?|reservations(/requests)?|reviews(\\?tab=(received|written))?"
-                    + "|inquiries(\\?tab=(received|sent))?|artist)$");
+            "^(/mypage/(chats(/\\d+)?|reservations(/requests)?|reviews(\\?tab=(received|written))?"
+                    + "|inquiries(\\?tab=(received|sent))?|artist|support)|/admin/support)$");
 
     public PushMessage {
         if (url == null || !ALLOWED_URL.matcher(url).matches()) url = "/mypage";

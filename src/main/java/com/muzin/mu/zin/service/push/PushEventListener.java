@@ -39,7 +39,9 @@ public class PushEventListener {
             Map.entry(NotificationType.INQUIRY_REPLIED, "문의에 답변이 도착했어요"),
             Map.entry(NotificationType.INQUIRY_TO_CHAT, "문의가 채팅으로 이어졌어요"),
             Map.entry(NotificationType.ARTIST_APPROVED, "아티스트 신청이 승인됐어요"),
-            Map.entry(NotificationType.ARTIST_REJECTED, "아티스트 신청 결과가 나왔어요")
+            Map.entry(NotificationType.ARTIST_REJECTED, "아티스트 신청 결과가 나왔어요"),
+            Map.entry(NotificationType.SUPPORT_CREATED, "새 운영자 문의가 도착했어요"),
+            Map.entry(NotificationType.SUPPORT_REPLIED, "운영자 문의에 답변이 도착했어요")
     );
 
     private final PushService pushService;
@@ -85,6 +87,8 @@ public class PushEventListener {
             case INQUIRY_REPLIED -> "/mypage/inquiries?tab=sent";
             case INQUIRY_TO_CHAT -> e.refId() == null ? "/mypage/chats" : "/mypage/chats/" + e.refId();
             case ARTIST_APPROVED, ARTIST_REJECTED -> "/mypage/artist";
+            case SUPPORT_CREATED -> "/admin/support";
+            case SUPPORT_REPLIED -> "/mypage/support";
         };
     }
 }
